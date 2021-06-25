@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 echo "[INFO]"
 echo "[INFO] Updating base system"
 echo "[INFO]"

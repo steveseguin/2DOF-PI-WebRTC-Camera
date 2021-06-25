@@ -44,7 +44,7 @@ tar -xf gst-plugins-good-1.18.4.tar.xz
 cd ./gst-plugins-good-1.18.4
 mkdir build
 cd ./build
-meson --prefix=/usr -Dbuildtype=release -Dgst_debug=false -Dgtk_doc=disabled -D gst_debug=false -D package-origin=https://gstreamer.freedesktop.org/src/gstreamer/ -D package-name="GStreamer 1.18.4 BLFS" ..
+meson --prefix=/usr -Dbuildtype=release -Dgst_debug=false -Dgtk_doc=disabled -D gst_debug=false -D package-origin=https://gstreamer.freedesktop.org/src/gstreamer/ -D target=rpi -D package-name="GStreamer 1.18.4 BLFS" ..
 ninja -j4
 sudo ninja install
 sudo ldconfig

@@ -25,7 +25,7 @@ RUN cd /usr/local/src && git clone https://github.com/libnice/libnice.git \
     && ninja -C build -j4 \
     && ninja -C build install \
     && sudo ldconfig \
-    && rm -rf /url/local/src/libnice
+    && rm -rf /usr/local/src/libnice
 
 RUN cd /usr/local/src \
     && apt-get update \
@@ -38,7 +38,7 @@ RUN cd /usr/local/src \
     && make -j4 \
     && make install -j4 \
     && ldconfig \
-    && rm -rf /url/local/libsrtp
+    && rm -rf /usr/local/src/libsrtp
 
 
 RUN cd /usr/local/src \
@@ -51,11 +51,9 @@ RUN cd /usr/local/src \
     && make -j4 \
     && make install -j4 \
     && ldconfig \
-    && rm -rf /url/local/usrsctp
+    && rm -rf /usr/local/src/usrsctp
 
 RUN cd /usr/local/src \
-    && mkdir ffmpeg-libraries \
-    && cd ffmpeg-libraries \
     && git clone --depth 1 https://github.com/mstorsjo/fdk-aac.git \
     && cd fdk-aac/ \
     && autoreconf -fiv \
@@ -63,18 +61,18 @@ RUN cd /usr/local/src \
     && make -j4 \
     && make install \
     && ldconfig \
-    && rm -rf /url/local/ffmpeg-libraries/fdk-aac
+    && rm -rf /usr/local/src/fdk-aac
 
-RUN cd /usr/local/src/ffmpeg-libraries \
+RUN cd /usr/local/src \
     && git clone --depth 1 https://chromium.googlesource.com/webm/libvpx \
     && cd libvpx \
     && ./configure --disable-examples --disable-tools --disable-unit_tests --disable-docs --enable-shared \
     && make -j4 \
     && make install \
     && ldconfig \
-    && rm -rf /url/local/ffmpeg-libraries/fdk-aac
+    && rm -rf /usr/local/src/libvpx
 
-RUN cd /usr/local/src/ffmpeg-libraries \
+RUN cd /usr/local/src \
     && git clone -b release-2.9.3 https://github.com/sekrit-twc/zimg.git \
     && cd zimg \
     && sh autogen.sh \
@@ -82,7 +80,7 @@ RUN cd /usr/local/src/ffmpeg-libraries \
     && make -j4 \
     && make install \
     && ldconfig \
-    && rm -rf /url/local/ffmpeg-libraries/zimg
+    && rm -rf /usr/local/src/zimg
 
 RUN cd /usr/local/src \
     && git clone --depth 1 https://github.com/raspberrypi/userland.git \
@@ -117,7 +115,8 @@ RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && ninja -j4 \
     && ninja install \
     && ldconfig \ 
-    && rm -rf /usr/local/src/gstreamer-1.18.4
+    && rm -rf /usr/local/src/gstreamer-1.18.4 \
+    && rm /usr/local/src/gstreamer-1.18.4.tar.xz
 
 RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && export LD_LIBRARY_PATH=/usr/local/lib/:/usr/lib \
@@ -131,7 +130,8 @@ RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && ninja -j4 \
     && ninja install \
     && ldconfig \ 
-    && rm -rf /usr/local/src/gst-plugins-base-1.18.4
+    && rm -rf /usr/local/src/gst-plugins-base-1.18.4 \
+    && rm /usr/local/src/gst-plugins-base-1.18.4.tar.xz
 
 RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && export LD_LIBRARY_PATH=/usr/local/lib/:/usr/lib \
@@ -145,7 +145,8 @@ RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && ninja -j4 \
     && ninja install \
     && ldconfig \ 
-    && rm -rf /usr/local/src/gst-plugins-good-1.18.4
+    && rm -rf /usr/local/src/gst-plugins-good-1.18.4 \
+    && rm /usr/local/src/gst-plugins-good-1.18.4.tar.xz
 
 RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && export LD_LIBRARY_PATH=/usr/local/lib/:/usr/lib \
@@ -159,7 +160,9 @@ RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && ninja -j4 \
     && ninja install \
     && ldconfig \ 
-    && rm -rf /usr/local/src/gst-plugins-ugly-1.18.4
+    && rm -rf /usr/local/src/gst-plugins-ugly-1.18.4 \
+    && rm /usr/local/src/gst-plugins-ugly-1.18.4.tar.xz
+
 
 RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && export LD_LIBRARY_PATH=/usr/local/lib/:/usr/lib \
@@ -173,7 +176,8 @@ RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && ninja -j4 \
     && ninja install \
     && ldconfig \ 
-    && rm -rf /usr/local/src/gst-plugins-bad-1.18.4
+    && rm -rf /usr/local/src/gst-plugins-bad-1.18.4 \
+    && rm /usr/local/src/gst-plugins-bad-1.18.4.tar.xz
 
 RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && export LD_LIBRARY_PATH=/usr/local/lib/:/usr/lib \
@@ -187,7 +191,8 @@ RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && ninja -j4 \
     && ninja install \
     && ldconfig \ 
-    && rm -rf /usr/local/src/gst-python-1.18.4
+    && rm -rf /usr/local/src/gst-python-1.18.4 \
+    && rm /usr/local/src/gst-python-1.18.4.tar.xz
 
 RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && export LD_LIBRARY_PATH=/usr/local/lib/:/usr/lib \
@@ -198,7 +203,7 @@ RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && ninja -C build -j4 \
     && ninja -C build install \
     && sudo ldconfig \
-    && rm -rf /url/local/src/libnice
+    && rm -rf /usr/local/src/libnice
 
 RUN python3 -m pip install websockets
 
