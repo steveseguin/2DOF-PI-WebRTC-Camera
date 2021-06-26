@@ -15,30 +15,36 @@ from gi.repository import GstWebRTC
 gi.require_version('GstSdp', '1.0')
 from gi.repository import GstSdp
 
-PIPELINE_DESC = '''
+test_video_pipeline = '''
 webrtcbin name=sendrecv bundle-policy=max-bundle
  videotestsrc ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
  queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
  audiotestsrc is-live=true wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
  queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! sendrecv.
 ''' 
-## In case you don't have a camera attached, try using this instead?
 
-#PIPELINE_DESC = '''
-#webrtcbin name=sendrecv bundle-policy=max-bundle
-#rpicamsrc bitrate=2000000 ! video/x-h264,profile=constrained-baseline,width=1280,height=720,level=3.0 ! queue ! h264parse ! rtph264pay config-interval=-1 !
-#queue ! application/x-rtp,media=video,encoding-name=H264,payload=96 ! sendrecv.
-#''' # raspberry pi camera needed; audio source removed to perserve simplicity.
-
-PIPELINE_DESC = '''
+rpi_cam_pipeline = '''
 webrtcbin name=sendrecv bundle-policy=max-bundle
+rpicamsrc bitrate=2000000 ! video/x-h264,profile=constrained-baseline,width=1280,height=720,level=3.0 ! queue ! h264parse ! rtph264pay config-interval=-1 !
+queue ! application/x-rtp,media=video,encoding-name=H264,payload=96 ! sendrecv.
+''' # raspberry pi camera needed; audio source removed to perserve simplicity.
+
+#v4l_pipeline = '''
+#webrtcbin name=sendrecv bundle-policy=max-bundle
+# v4l2src {cam_source_param} ! videoflip method=vertical-flip ! videoconvert ! video/x-raw,
+#width=1920,height=1080 ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+# queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
+#'''
+
+v4l_pipeline = '''
+ webrtcbin name=sendrecv bundle-policy=max-bundle
  v4l2src device=/dev/video0 ! videoflip method=vertical-flip ! videoconvert ! video/x-raw,
-width=1920,height=1080 ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+ width=1920,height=1080 ! queue ! vp8enc deadline=1 ! rtpvp8pay !
  queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
 '''
 
 class WebRTCClient:
-    def __init__(self, peer_id, server='wss://apibackup.obs.ninja:443'):
+    def __init__(self, pipeline, peer_id, server='wss://apibackup.obs.ninja:443'):
         ###
         ###  To avoid causing issues for production; default server is api.backup.obs.ninja. 
         ###  Streams can be view at https://backup.obs.ninja/?password=false&view={peer_id} as a result.
@@ -50,6 +56,7 @@ class WebRTCClient:
         self.session = None
         self.peer_id = peer_id
         self.server = server 
+        self.pipeline = pipeline
 
     async def connect(self):
         print("Connect")
@@ -164,7 +171,7 @@ class WebRTCClient:
 
     def start_pipeline(self):
         print("START PIPE")
-        self.pipe = Gst.parse_launch(PIPELINE_DESC)
+        self.pipe = Gst.parse_launch(self.pipeline)
         self.webrtc = self.pipe.get_by_name('sendrecv')
         self.webrtc.connect('on-negotiation-needed', self.on_negotiation_needed)
         self.webrtc.connect('on-ice-candidate', self.send_ice_candidate_message)
@@ -257,16 +264,36 @@ if __name__=='__main__':
 
     stream_id = os.environ.get('STREAM_ID','htxi1234')
     server = os.environ.get('SERVER', 'wss://apibackup.obs.ninja:443')
+    cam_source = os.environ.get('CAM_SOURCE', 'test')
+    cam_source_params = os.environ.get('CAM_SOURCE_PARAMS', 'device=/dev/video0')
+    custom_pipeline = os.environ.get('CUSTOM_PIPELINE', '')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('streamid', help='Stream ID of the peer to connect to')
+    parser.add_argument('--streamid', help='Stream ID of the peer to connect to')
     parser.add_argument('--server', help='Handshake server to use, eg: "wss://backupapi.obs.ninja:443"')
+    parser.add_argument('--cam_source', help='Video source type. Use test|rpi_cam|v4l2src.')
+    parser.add_argument('--cam_source_params', help='Optional parameters for cam source. Currently only used for v4l2src to determine video device, i.e. device=/dev/video0')
+    parser.add_argument('--custom_pipeline', help='Injection of custom gst pipeline plugins. Supplied plugins are injected between source and ! videoconvert ! to allow manipulation of the video source. If supplied, the value must terminate with a bang (!) Example: videoflip method=vertical-flip !')
     args = parser.parse_args()
 
     if(args.streamid is not None): stream_id = args.streamid
     if(args.server is not None): server = args.server
+    if(args.cam_source is not None): cam_source = args.cam_source
+    if(args.cam_source_params is not None): cam_source_params = args.cam_source_params
+    if(args.custom_pipeline is not None): custom_pipeline = args.custom_pipeline
 
-    c = WebRTCClient(stream_id, server)
+    if cam_source == 'test': gst_pipeline = test_video_pipeline
+    elif cam_source == 'rpi_cam': gst_pipeline = rpi_cam_pipeline
+    elif cam_source == 'v4l2src': gst_pipeline = v4l_pipeline
+    else:
+        print(f'Invalid camera source: {missing}. Use test|rpi_cam|v4l2src')
+        sys.exit(1)
+
+    if(stream_id is None):
+        print(f'Missing stream id. Either set using the STREAM_ID envrionment variable or the --streamid command line switch.')
+        sys.exit(1)
+
+    c = WebRTCClient(pipeline=gst_pipeline, peer_id=stream_id, server=server)
     asyncio.get_event_loop().run_until_complete(c.connect())
     res = asyncio.get_event_loop().run_until_complete(c.loop())
     sys.exit(res)
