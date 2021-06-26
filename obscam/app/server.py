@@ -30,16 +30,26 @@ webrtcbin name=sendrecv bundle-policy=max-bundle
 #queue ! application/x-rtp,media=video,encoding-name=H264,payload=96 ! sendrecv.
 #''' # raspberry pi camera needed; audio source removed to perserve simplicity.
 
+PIPELINE_DESC = '''
+webrtcbin name=sendrecv bundle-policy=max-bundle
+ v4l2src device=/dev/video0 ! videoflip method=vertical-flip ! videoconvert ! video/x-raw,
+width=1920,height=1080 ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+ queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
+'''
 
 class WebRTCClient:
-    def __init__(self, peer_id, server):
+    def __init__(self, peer_id, server='wss://apibackup.obs.ninja:443'):
+        ###
+        ###  To avoid causing issues for production; default server is api.backup.obs.ninja. 
+        ###  Streams can be view at https://backup.obs.ninja/?password=false&view={peer_id} as a result.
+        ###
         self.conn = None
         self.pipe = None
         self.webrtc = None
         self.UUID = None
         self.session = None
         self.peer_id = peer_id
-        self.server = 'wss://apibackup.obs.ninja:443' ###  To avoid causing issues for production; streams can be view at https://backup.obs.ninja as a result.
+        self.server = server 
 
     async def connect(self):
         print("Connect")
@@ -49,7 +59,11 @@ class WebRTCClient:
         print(msg)
         await self.conn.send(msg)
 
-    def on_offer_created(self, promise, _, __):  ## This is all based on the legacy API of OBS.Ninja; gstreamer-1.19 lacks support for the newer API.
+    def on_offer_created(self, promise, _, __):  
+        ###
+        ### This is all based on the legacy API of OBS.Ninja; 
+        ### gstreamer-1.19 lacks support for the newer API.
+        ###
         print("ON OFFER CREATED")
         promise.wait()
         reply = promise.get_reply()
@@ -95,7 +109,10 @@ class WebRTCClient:
         loop = asyncio.new_event_loop()
         loop.run_until_complete(self.conn.send(icemsg))
 
-    def on_incoming_decodebin_stream(self, _, pad): # If daring to capture inbound video; support not assured at this point.
+    def on_incoming_decodebin_stream(self, _, pad): 
+        #
+        # If daring to capture inbound video; support not assured at this point.
+        #
         print("ON INCOMING")
         if not pad.has_current_caps():
             print (pad, 'has no caps, ignoring')
@@ -106,9 +123,9 @@ class WebRTCClient:
         if name.startswith('video'):
             q = Gst.ElementFactory.make('queue')
             conv = Gst.ElementFactory.make('videoconvert')
-#            sink = Gst.ElementFactory.make('filesink', "fsink")  # record inbound stream to file
+            # sink = Gst.ElementFactory.make('filesink', "fsink")  # record inbound stream to file
             sink = Gst.ElementFactory.make('autovideosink')
-#            sink.set_property("location", str(time.time())+'.mkv')
+            # sink.set_property("location", str(time.time())+'.mkv')
             self.pipe.add(q)
             self.pipe.add(conv)
             self.pipe.add(sink)
@@ -189,7 +206,6 @@ class WebRTCClient:
             promise.interrupt()
             self.create_answer()
 
-
     async def loop(self):
         print("LOOP START")
         assert self.conn
@@ -227,8 +243,7 @@ class WebRTCClient:
 
 
 def check_plugins():
-    needed = ["opus", "vpx", "nice", "webrtc", "dtls", "srtp", "rtp",  ## vpx probably isn't needed
-              "rtpmanager", "videotestsrc", "audiotestsrc"]
+    needed = ["opus", "vpx", "nice", "webrtc", "dtls", "srtp", "rtp", "rtpmanager", "videotestsrc", "audiotestsrc"]
     missing = list(filter(lambda p: Gst.Registry.get().find_plugin(p) is None, needed))
     if len(missing):
         print('Missing gstreamer plugins:', missing)
@@ -239,11 +254,19 @@ if __name__=='__main__':
     Gst.init(None)
     if not check_plugins():
         sys.exit(1)
+
+    stream_id = os.environ.get('STREAM_ID','htxi1234')
+    server = os.environ.get('SERVER', 'wss://apibackup.obs.ninja:443')
+
     parser = argparse.ArgumentParser()
     parser.add_argument('streamid', help='Stream ID of the peer to connect to')
     parser.add_argument('--server', help='Handshake server to use, eg: "wss://backupapi.obs.ninja:443"')
     args = parser.parse_args()
-    c = WebRTCClient(args.streamid, args.server)
+
+    if(args.streamid is not None): stream_id = args.streamid
+    if(args.server is not None): server = args.server
+
+    c = WebRTCClient(stream_id, server)
     asyncio.get_event_loop().run_until_complete(c.connect())
     res = asyncio.get_event_loop().run_until_complete(c.loop())
     sys.exit(res)
