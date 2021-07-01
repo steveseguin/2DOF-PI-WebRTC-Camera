@@ -25,22 +25,21 @@ webrtcbin name=sendrecv bundle-policy=max-bundle
 
 rpi_cam_pipeline = '''
 webrtcbin name=sendrecv bundle-policy=max-bundle
-rpicamsrc bitrate=2000000 ! video/x-h264,profile=constrained-baseline,width=1280,height=720,level=3.0 ! {custom}  queue ! h264parse ! rtph264pay config-interval=-1 !
+rpicamsrc bitrate=2000000 ! video/x-h264,profile=constrained-baseline,width={width},height={height},framerate={fps}/1,level=3.0 ! {custom}  queue ! h264parse ! rtph264pay config-interval=-1 !
 queue ! application/x-rtp,media=video,encoding-name=H264,payload=96 ! sendrecv.
 ''' # raspberry pi camera needed; audio source removed to perserve simplicity.
 
+#4l_pipeline = '''
+#webrtcbin name=sendrecv bundle-policy=max-bundle 
+#v4l2src {source_params} ! image/jpeg, width=1280, height=720, framerate=30/1, format=MJPG ! jpegdec !{custom} videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+#queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
+#'''
+
 v4l_pipeline = '''
 webrtcbin name=sendrecv bundle-policy=max-bundle 
-v4l2src {source_params} ! {custom} videoconvert ! video/x-raw, width=1920,height=1080 ! queue ! vp8enc deadline=1 ! rtpvp8pay ! 
+v4l2src {source_params} ! {caps} ! {custom} videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay ! 
 queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
 '''
-
-#v4l_pipeline = '''
-# webrtcbin name=sendrecv bundle-policy=max-bundle
-# v4l2src device=/dev/video0 ! videoflip method=vertical-flip ! videoconvert ! video/x-raw,
-# width=1920,height=1080 ! queue ! vp8enc deadline=1 ! rtpvp8pay !
-# queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
-#'''
 
 class WebRTCClient:
     def __init__(self, pipeline, peer_id, server='wss://apibackup.obs.ninja:443'):
@@ -266,6 +265,10 @@ if __name__=='__main__':
     cam_source = os.environ.get('CAM_SOURCE', 'test')
     cam_source_params = os.environ.get('CAM_SOURCE_PARAMS', 'device=/dev/video0')
     custom_pipeline = os.environ.get('CUSTOM_PIPELINE', '')
+    fps = os.environ.get('FPS', '15')
+    width = os.environ.get('WIDTH', '1280')
+    height = os.environ.get('HEIGHT', '720')
+    caps = os.environ.get('CAPS', 'video/x-raw,width={width},height={height},framerate={fps}/1')
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--streamid', help='Stream ID of the peer to connect to')
@@ -273,6 +276,10 @@ if __name__=='__main__':
     parser.add_argument('--cam_source', help='Video source type. Use test|rpi_cam|v4l2src.')
     parser.add_argument('--cam_source_params', help='Optional parameters for cam source. Currently only used for v4l2src to determine video device, i.e. device=/dev/video0')
     parser.add_argument('--custom_pipeline', help='Injection of custom gst pipeline plugins. Supplied plugins are injected between source and ! videoconvert ! to allow manipulation of the video source. If supplied, the value must terminate with a bang (!) Example: videoflip method=vertical-flip !')
+    parser.add_argument('--width', help='video frame width. Must be supported by camera')
+    parser.add_argument('--height', help='video frame height. Must be supported by camera')
+    parser.add_argument('--framerate', help='video frame rate. Must be supported by camera')
+    parser.add_argument('--caps', help='caps for gstreamer pipleine. Default is video/x-raw,width={width},height={height},framerate={fps}/1')
     args = parser.parse_args()
 
     if(args.streamid is not None): stream_id = args.streamid
@@ -280,13 +287,17 @@ if __name__=='__main__':
     if(args.cam_source is not None): cam_source = args.cam_source
     if(args.cam_source_params is not None): cam_source_params = args.cam_source_params
     if(args.custom_pipeline is not None): custom_pipeline = args.custom_pipeline
+    if(args.framerate is not None): fps = args.framerate
+    if(args.width is not None): fps = args.width
+    if(args.height is not None): fps = args.height
 
     if cam_source == 'test': gst_pipeline = test_video_pipeline.format(custom=custom_pipeline)
-    elif cam_source == 'rpi_cam': gst_pipeline = rpi_cam_pipeline.format(custom=custom_pipeline)
+    elif cam_source == 'rpi_cam': gst_pipeline = rpi_cam_pipeline.format(custom=custom_pipeline, width=width, height=height, fps=fps)
     elif cam_source == 'v4l2src': 
-        gst_pipeline = v4l_pipeline.format(source_params=cam_source_params, custom=custom_pipeline)
+        gst_pipeline = v4l_pipeline.format(caps=caps, source_params=cam_source_params, custom=custom_pipeline)
+        gst_pipeline = gst_pipeline.format(width=width, height=height, fps=fps)
     else:
-        print(f'Invalid camera source: {missing}. Use test|rpi_cam|v4l2src')
+        print(f'Invalid camera source: {cam_source}. Use test|rpi_cam|v4l2src')
         sys.exit(1)
 
     print(f'Using pipeline: {gst_pipeline}')
