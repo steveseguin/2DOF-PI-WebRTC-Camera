@@ -182,6 +182,19 @@ RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
 RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && export LD_LIBRARY_PATH=/usr/local/lib/:/usr/lib \
     && cd /usr/local/src \
+    && git clone https://github.com/libnice/libnice.git \
+    && cd libnice/ \
+    && meson --prefix=/usr -D buildtype=release -D gst_debug=false build \
+    && ninja -C build -j4 \
+    && ninja -C build install \
+    && sudo ldconfig \
+    && rm -rf /usr/local/src/libnice
+
+RUN python3 -m pip install websockets
+
+RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
+    && export LD_LIBRARY_PATH=/usr/local/lib/:/usr/lib \
+    && cd /usr/local/src \
     && wget https://gstreamer.freedesktop.org/src/gst-python/gst-python-1.18.4.tar.xz \
     && tar -xf gst-python-1.18.4.tar.xz \
     && cd ./gst-python-1.18.4/ \
@@ -194,27 +207,14 @@ RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && rm -rf /usr/local/src/gst-python-1.18.4 \
     && rm /usr/local/src/gst-python-1.18.4.tar.xz
 
-RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
-    && export LD_LIBRARY_PATH=/usr/local/lib/:/usr/lib \
-    && cd /usr/local/src \
-    && git clone https://github.com/libnice/libnice.git \
-    && cd libnice/ \
-    && meson --prefix=/usr -D buildtype=release -D gst_debug=false build \
-    && ninja -C build -j4 \
-    && ninja -C build install \
-    && sudo ldconfig \
-    && rm -rf /usr/local/src/libnice
-
-RUN python3 -m pip install websockets
-
 ADD scripts /scripts
 ADD app /app
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
-CMD ["python3","server.py", "htxi1234"]
+CMD ["python3","server.py"]
 
 # Build time is about 90 min
 # docker buildx build --platform linux/arm/v7 --pull --rm -f "Dockerfile" -t obs-cam:pi "."
 # docker build  --pull --rm -f "Dockerfile" -t obs-cam:pi "."
-# docker run -d --network host --privileged --device /dev/vchiq --device /dev/video0 --name obs-cam obs-cam:pi
+# docker run -d --network host --privileged --env-file env_file --device /dev/vchiq --device /dev/video0 --name obs-cam obs-cam:pi

@@ -17,7 +17,7 @@ from gi.repository import GstSdp
 
 test_video_pipeline = '''
 webrtcbin name=sendrecv bundle-policy=max-bundle
- videotestsrc ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+ videotestsrc ! {custom}  videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
  queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
  audiotestsrc is-live=true wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
  queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! sendrecv.
@@ -25,23 +25,22 @@ webrtcbin name=sendrecv bundle-policy=max-bundle
 
 rpi_cam_pipeline = '''
 webrtcbin name=sendrecv bundle-policy=max-bundle
-rpicamsrc bitrate=2000000 ! video/x-h264,profile=constrained-baseline,width=1280,height=720,level=3.0 ! queue ! h264parse ! rtph264pay config-interval=-1 !
+rpicamsrc bitrate=2000000 ! video/x-h264,profile=constrained-baseline,width=1280,height=720,level=3.0 ! {custom}  queue ! h264parse ! rtph264pay config-interval=-1 !
 queue ! application/x-rtp,media=video,encoding-name=H264,payload=96 ! sendrecv.
 ''' # raspberry pi camera needed; audio source removed to perserve simplicity.
 
+v4l_pipeline = '''
+webrtcbin name=sendrecv bundle-policy=max-bundle 
+v4l2src {source_params} ! {custom} videoconvert ! video/x-raw, width=1920,height=1080 ! queue ! vp8enc deadline=1 ! rtpvp8pay ! 
+queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
+'''
+
 #v4l_pipeline = '''
-#webrtcbin name=sendrecv bundle-policy=max-bundle
-# v4l2src {cam_source_param} ! videoflip method=vertical-flip ! videoconvert ! video/x-raw,
-#width=1920,height=1080 ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+# webrtcbin name=sendrecv bundle-policy=max-bundle
+# v4l2src device=/dev/video0 ! videoflip method=vertical-flip ! videoconvert ! video/x-raw,
+# width=1920,height=1080 ! queue ! vp8enc deadline=1 ! rtpvp8pay !
 # queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
 #'''
-
-v4l_pipeline = '''
- webrtcbin name=sendrecv bundle-policy=max-bundle
- v4l2src device=/dev/video0 ! videoflip method=vertical-flip ! videoconvert ! video/x-raw,
- width=1920,height=1080 ! queue ! vp8enc deadline=1 ! rtpvp8pay !
- queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
-'''
 
 class WebRTCClient:
     def __init__(self, pipeline, peer_id, server='wss://apibackup.obs.ninja:443'):
@@ -282,13 +281,15 @@ if __name__=='__main__':
     if(args.cam_source_params is not None): cam_source_params = args.cam_source_params
     if(args.custom_pipeline is not None): custom_pipeline = args.custom_pipeline
 
-    if cam_source == 'test': gst_pipeline = test_video_pipeline
-    elif cam_source == 'rpi_cam': gst_pipeline = rpi_cam_pipeline
-    elif cam_source == 'v4l2src': gst_pipeline = v4l_pipeline
+    if cam_source == 'test': gst_pipeline = test_video_pipeline.format(custom=custom_pipeline)
+    elif cam_source == 'rpi_cam': gst_pipeline = rpi_cam_pipeline.format(custom=custom_pipeline)
+    elif cam_source == 'v4l2src': 
+        gst_pipeline = v4l_pipeline.format(source_params=cam_source_params, custom=custom_pipeline)
     else:
         print(f'Invalid camera source: {missing}. Use test|rpi_cam|v4l2src')
         sys.exit(1)
 
+    print(f'Using pipeline: {gst_pipeline}')
     if(stream_id is None):
         print(f'Missing stream id. Either set using the STREAM_ID envrionment variable or the --streamid command line switch.')
         sys.exit(1)

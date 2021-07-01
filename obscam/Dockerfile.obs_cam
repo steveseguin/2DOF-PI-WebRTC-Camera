@@ -1,17 +1,13 @@
 FROM obs-cam:pi.extra
 
-RUN rm -rf /usr/local/src/* 
-
 ADD scripts /scripts
 ADD app /app
 WORKDIR /app
 
-
-#EXPOSE 80
 ENV PYTHONUNBUFFERED=1
-CMD ["python3","server.py", "htxi1234"]
+CMD ["python3","server.py"]
 
 
 # docker buildx build --platform linux/arm/v7 --rm -f "Dockerfile.obs_cam" -t obs-cam:pi "."
 # docker build  --rm -f "Dockerfile.obs_cam" -t obs-cam:pi "."
-# docker run -d --network host --privileged --device /dev/vchiq --device /dev/video0 --name obs-cam obs-cam:pi
+# docker run -d --network host --privileged --env-file env_file --device /dev/vchiq --device /dev/video0 --name obs-cam obs-cam:pi
