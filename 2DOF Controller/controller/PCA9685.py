@@ -1,7 +1,7 @@
 # Copyright (c) 2016 Adafruit Industries
 # Author: Tony DiCola
 #
-# Copyright (c) 2018 Avanade
+# Copyright (c) 2021 Avanade
 # Author: Thor Schueler
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy

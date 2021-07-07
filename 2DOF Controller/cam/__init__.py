@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Avanade
+# Copyright (c) 2021 Avanade
 # Author: Thor Schueler
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -18,12 +18,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#
-# pylint: disable=C0103
-from .schemas import servo_schema as ServoSchema, controller_schema as ControllerSchema
-from .servo import Servo
-from .PCA9685 import PCA9685, software_reset
-from .servo_attributes import ServoAttributes
-from .miuzei_sg90_attributes import MiuzeiSG90Attributes
-from .es08maII_attributes import ES08MAIIAttributes
-from .custom_servo_attributes import CustomServoAttributes
+"""Camera controller for Raspberry Pi"""
+from .schemas import cam_servo_schema as ServoSchema, cam_schema as CamSchema
+from .cam_servo import CamServo
+from .cam import Cam

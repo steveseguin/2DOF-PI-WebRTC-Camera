@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Avanade
+# Copyright (c) 2021 Avanade
 # Author: Thor Schueler
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,7 +23,7 @@
 """Module defining a controller and servo related json schemas"""
 
 controller_schema = {
-    "$id": "http://theRealThor.com/meArm.servo-controller.schema.json",
+    "$id": "http://theRealThor.com/obscam.servo-controller.schema.json",
     "title": "Servo Controller",
     "description": "Describes key servo controller attributes for tuning.",
     "definitions": {
@@ -45,7 +45,7 @@ controller_schema = {
 }
 
 servo_schema = {
-    "$id": "http://theRealThor.com/meArm.servo-attributes.schema.json",
+    "$id": "http://theRealThor.com/obscam.servo-attributes.schema.json",
     "title": "Servo Attributes",
     "description": "Describes key servo attributes for tuning.",
     "definitions": {

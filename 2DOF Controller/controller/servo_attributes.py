@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Avanade
+# Copyright (c) 2021 Avanade
 # Author: Thor Schueler
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy

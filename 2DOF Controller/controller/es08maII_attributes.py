@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Avanade
+# Copyright (c) 2021 Avanade
 # Author: Thor Schueler
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,14 +26,14 @@ from .servo_attributes import ServoAttributes
     Implements the properties class for the Miuzei SG90
 """
 
-class MiuzeiSG90Attributes(ServoAttributes):
+class ES08MAIIAttributes(ServoAttributes):
     """
     Implements an abstract base class for servo properties
     """
 
-    max_pulse = 2.3
+    max_pulse = 2.4
     min_pulse = 0.6
-    neutral_pulse = 1.4
-    min_angle = -85.0
-    max_angle = 85.0
-    neutral_angle = -0.0    
+    neutral_pulse = 1.5
+    min_angle = -90.01
+    max_angle = 90.01
+    neutral_angle = -0.0
