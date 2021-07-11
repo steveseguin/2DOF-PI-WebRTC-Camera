@@ -283,10 +283,21 @@ class Cam(object):
     def position(self) -> (float, float):
         """Gets the current position of the gripper
 
-        :return: The current gripper position
+        :return: The current position
         :rtype: 2 dimensional tuple of base and elevation angles.
         """
         return (self._base_angle, self._elevation_angle)
+
+    @property 
+    def boundaries(self) -> ((float, float, float, float), (float, float, float, float)):
+        """Returns the pan and tile boundaries for the cam
+
+        :return: The boundaries for pan and tile
+        :rtype: 2 dimenasional tupel of 2 dimensional typles, each containing the lower and uppor boundaries, neutral and trim for pan and tile respectively
+        """
+        return (
+            (self._base_servo.min, self._base_servo.max, self._base_servo.neutral, self._base_servo.trim),
+            (self._elevation_servo.min, self._elevation_servo.max, self._elevation_servo.neutral, self._elevation_servo.trim))
 
     def delete(self):
         """delete
