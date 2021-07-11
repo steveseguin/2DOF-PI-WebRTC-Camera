@@ -32,7 +32,7 @@ from .miuzei_sg90_attributes import MiuzeiSG90Attributes
 class Servo(object):
     """Represents a servo on the controller."""
 
-    def __init__(self, controller, channel: int, attributes: ServoAttributes = MiuzeiSG90Attributes()):
+    def __init__(self, controller, channel: int, attributes: ServoAttributes = MiuzeiSG90Attributes(), move_to_neutral: bool = False):
         """__init__
         Initialize Servo
             Attributes:
@@ -44,6 +44,9 @@ class Servo(object):
 
         :param attributes: The servo attribute (min/max/neutral pulses and angles).
         :type attributes: ServoAttributes
+
+        :param move_to_neutral: Move the servo to the neutral position if True
+        :type move_to_neutral: bool
 
         """
         self._logger = logging.getLogger('controller.servo')
@@ -64,7 +67,7 @@ class Servo(object):
         self._servo_neutral = self._calculate_servo_ticks_from_pulse(self._attributes.neutral_pulse)
         
         #initialize servo
-        self.set_angle(self._attributes.neutral_angle)
+        if move_to_neutral is True: self.set_angle(self._attributes.neutral_angle)
         
     @property
     def angle(self) -> float:

@@ -51,7 +51,7 @@ class Cam(object):
             base_channel: int = 15,
             elevation_channel: int = 12,
             initialize: bool = True,
-            logging_level: str = 'INFO'):
+            logging_level: str = 'ERROR'):
         """__init__
         Default initialization of arm. Avoid using this and instead create a meArm using the meArm.createWithParameters
         method, which ensures that a meArm is not registered twice.
@@ -118,6 +118,8 @@ class Cam(object):
                                 Cam.base_neutral_angle, Cam.base_min_angle, Cam.base_max_angle, Cam.base_trim)
         self._elevation_servo = CamServo(elevation_channel, MiuzeiSG90Attributes(), 
                                 Cam.elevation_neutral_angle, Cam.elevation_min_angle, Cam.elevation_max_angle, Cam.elevation_trim)
+        self._base_angle = self._base_servo.neutral + self._base_servo.trim
+        self._elevation_angle = self._elevation_servo.neutral + self._elevation_servo.trim
     
     @classmethod
     def boot_from_json_file(cls, json_file:str):
@@ -168,7 +170,7 @@ class Cam(object):
                 if id in Cam._instances: continue
                 if a['logging_level'] is not None: level = a['logging_level']
                 obj = cls(controller, s['base']['channel'], s['elevation']['channel'], False, level)
-                obj._base_servo = Cam7Servo.from_dict(s['base'])
+                obj._base_servo = CamServo.from_dict(s['base'])
                 obj._elevation_servo = CamServo.from_dict(s['elevation']) 
                 obj._inc = a['angle-increment']
                 obj.initialize()
@@ -277,14 +279,14 @@ class Cam(object):
         """
         return self._id
 
-#    @property
-#    def position(self) -> Point:
-#        """Gets the current position of the gripper
+    @property
+    def position(self) -> (float, float):
+        """Gets the current position of the gripper
 
-#        :return: The current gripper position
-#        :rtype: Point
-#        """
-#        return self._position
+        :return: The current gripper position
+        :rtype: 2 dimensional tuple of base and elevation angles.
+        """
+        return (self._base_angle, self._elevation_angle)
 
     def delete(self):
         """delete
@@ -293,44 +295,104 @@ class Cam(object):
         self.reset()
         del Cam._instances[self._id]
 
-#    def go_to_point(self, target: Point, resolution: float = 10, raiseOutOfBoundsException: bool = True) -> int:
-#        """go_to_point
-#        
-#        Travel in a straight line from current position to a requested position
-#        
-#        :param target: The target point of the operation
-#        :type target: Point
-#        :param resolution: The increment for each movement along the path.
-#        :type resolution: int
-#        :param raiseOutOfBoundsException: True to raise an outOfBoundsException if target is not reachable.
-#        :type raiseOutOfBoundsException: bool
-#
-#        :return: The number of movements executed
-#        :rtype: int       
-#        """
-#        dist = self._position.distance(target)
-#        p = self._position
-#        cycles = dist/resolution
-#        if dist == 0 or cycles == 0: 
-#            return 0
-#
-#        dx = (target.x - p.x) / cycles
-#        dy = (target.y - p.y) / cycles
-#        dz = (target.z - p.z) / cycles
-#        i = 1
-#        c = 1
-#        while i < cycles:
-#            p1 = Point.fromCartesian(p.x + dx, p.y + dy, p.z + dz)
-#            if self.go_directly_to_point(p1, raiseOutOfBoundsException): c += 1
-#            i += 1
-#            p = p1
-#        self.go_directly_to_point(target, raiseOutOfBoundsException)
-#        return c
+    def pan_to(self, angle: float):
+        """ Pan the camera horizontally to the given angle. 
+        
+        :param angle: The angle to which to pan from the current position. Can be positive or negative.
+        :type angle: float
+
+        :return: The pan angle after the movement. Should be very close to angle.
+        :rtype: float       
+        """
+        self.turn_on()
+        if angle - self._base_servo.trim > self._base_servo.max: angle = self._base_servo.max + self._base_servo.trim 
+        elif angle - self._base_servo.trim < self._base_servo.min: angle = self._base_servo.min + self._base_servo.trim 
+        if self._base_angle - self._base_servo.trim > angle:
+            while self._base_angle - self._base_servo.trim > angle:
+                self._base_angle -= self._inc
+                self._controller.set_servo_angle(self._base_servo.channel, self._base_angle - self._base_servo.trim)
+        elif self._base_angle - self._base_servo.trim < angle: 
+            while self._base_angle - self._base_servo.trim < angle:
+                self._base_angle += self._inc
+                self._controller.set_servo_angle(self._base_servo.channel, self._base_angle - self._base_servo.trim)
+        self.turn_off()
+        return self._base_angle
+
+    def pan_by(self, angle: float):
+        """ Pan the camera horizontally and incrementally by the given angle. 
+        
+        :param angle: The angle by which to increment the pan. Can be positive or negative.
+        :type angle: float
+
+        :return: The pan angle after the movement
+        :rtype: float       
+        """
+        self.turn_on()
+        a = self._base_angle + angle
+        if a - self._base_servo.trim > self._base_servo.max: a = self._base_servo.max + self._base_servo.trim 
+        elif a - self._base_servo.trim < self._base_servo.min: a = self._base_servo.min + self._base_servo.trim 
+        if self._base_angle - self._base_servo.trim > a:
+            while self._base_angle - self._base_servo.trim > a:
+                self._base_angle -= self._inc
+                self._controller.set_servo_angle(self._base_servo.channel, self._base_angle - self._base_servo.trim)
+        elif self._base_angle - self._base_servo.trim < a: 
+            while self._base_angle - self._base_servo.trim < a:
+                self._base_angle += self._inc
+                self._controller.set_servo_angle(self._base_servo.channel, self._base_angle - self._base_servo.trim)
+        self.turn_off()
+        return self._base_angle
+
+    def tilt_to(self, angle: float):
+        """ Tile the camera vertically to the given angle. 
+        
+        :param angle: The angle to which to tilt from the current elevation. Can be positive or negative.
+        :type angle: float
+
+        :return: The tilt angle after the movement. Should be very close to angle.
+        :rtype: float       
+        """
+        self.turn_on()
+        if angle - self._elevation_servo.trim > self._elevation_servo.max: angle = self._elevation_servo.max + self._elevation_servo.trim 
+        elif angle - self._elevation_servo.trim < self._elevation_servo.min: angle = self._elevation_servo.min + self._elevation_servo.trim 
+        if self._elevation_angle - self._elevation_servo.trim > angle:
+            while self._elevation_angle - self._elevation_servo.trim > angle:
+                self._elevation_angle -= self._inc
+                self._controller.set_servo_angle(self._elevation_servo.channel, self._elevation_angle - self._elevation_servo.trim)
+        elif self._elevation_angle - self._elevation_servo.trim < angle: 
+            while self._elevation_angle - self._elevation_servo.trim < angle:
+                self._elevation_angle += self._inc
+                self._controller.set_servo_angle(self._elevation_servo.channel, self._elevation_angle - self._elevation_servo.trim)
+        self.turn_off()
+        return self._elevation_angle
+
+    def tilt_by(self, angle: float):
+        """ Tilt the camera incrementally by the given angle. 
+        
+        :param angle: The angle by which to increment the tilt. Can be positive or negative.
+        :type angle: float
+
+        :return: The tilt angle after the movement
+        :rtype: float       
+        """
+        self.turn_on()
+        a = self._elevation_angle + angle
+        if a - self._elevation_servo.trim > self._elevation_servo.max: a = self._elevation_servo.max + self._elevation_servo.trim 
+        elif a - self._elevation_servo.trim < self._elevation_servo.min: a = self._elevation_servo.min + self._elevation_servo.trim 
+        if self._elevation_angle - self._elevation_servo.trim > a:
+            while self._elevation_angle - self._elevation_servo.trim > a:
+                self._elevation_angle -= self._inc
+                self._controller.set_servo_angle(self._elevation_servo.channel, self._elevation_angle - self._elevation_servo.trim)
+        elif self._elevation_angle - self._elevation_servo.trim < a: 
+            while self._elevation_angle - self._elevation_servo.trim < a:
+                self._elevation_angle += self._inc
+                self._controller.set_servo_angle(self._elevation_servo.channel, self._elevation_angle - self._elevation_servo.trim)
+        self.turn_off()
+        return self._elevation_angle
 
     def initialize(self):
         """Registers the servo.""" 
-        self._controller.add_servo(self._base_servo.channel, self._base_servo.attributes)
-        self._controller.add_servo(self._elevation_servo.channel, self._elevation_servo.attributes)
+        self._controller.add_servo(self._base_servo.channel, self._base_servo.attributes, False)
+        self._controller.add_servo(self._elevation_servo.channel, self._elevation_servo.attributes, False)
         self.reset()
         self.turn_off()
         self._logger.info("cam with id %s initialized,", self._id)
@@ -340,12 +402,29 @@ class Cam(object):
         Resets the cam at neutral position"""
         self._logger.info('Resetting cam %s...', self._id)
         
-        # set neutral angles
-        base = self._base_servo.neutral + self._base_servo.trim
-        elevation = self._elevation_servo.neutral + self._elevation_servo.trim
-        
-        self._controller.set_servo_angle(self._base_servo.channel, base)
-        self._controller.set_servo_angle(self._elevation_servo.channel, elevation)     
+        # move to neutral angles      
+        if self._base_angle - self._base_servo.trim > self._base_servo.neutral:
+            while self._base_angle - self._base_servo.trim > self._base_servo.neutral:
+                self._base_angle -= self._inc
+                self._controller.set_servo_angle(self._base_servo.channel, self._base_angle - self._base_servo.trim)
+        elif self._base_angle - self._base_servo.trim < self._base_servo.neutral: 
+            while self._base_angle - self._base_servo.trim < self._base_servo.neutral:
+                self._base_angle += self._inc
+                self._controller.set_servo_angle(self._base_servo.channel, self._base_angle - self._base_servo.trim)
+
+        if self._elevation_angle - self._elevation_servo.trim > self._elevation_servo.neutral:
+            while self._elevation_angle - self._elevation_servo.trim > self._elevation_servo.neutral:
+                self._elevation_angle -= self._inc
+                self._controller.set_servo_angle(self._elevation_servo.channel, self._elevation_angle - self._elevation_servo.trim)        
+        if self._elevation_angle - self._elevation_servo.trim < self._elevation_servo.neutral:
+            while self._elevation_angle - self._elevation_servo.trim < self._elevation_servo.neutral:
+                self._elevation_angle += self._inc
+                self._controller.set_servo_angle(self._elevation_servo.channel, self._elevation_angle - self._elevation_servo.trim)        
+       
+        self._base_angle = self._base_servo.neutral + self._base_servo.trim
+        self._elevation_angle = self._elevation_servo.neutral + self._elevation_servo.trim
+        self._controller.set_servo_angle(self._base_servo.channel, self._base_angle)
+        self._controller.set_servo_angle(self._elevation_servo.channel, self._elevation_angle)     
         self._logger.info("arm reset to (%f, %f)", self._base_servo.neutral, self._elevation_servo.neutral)
         time.sleep(0.3)
 
@@ -379,28 +458,32 @@ class Cam(object):
         if repeat: self._logger.info('Press Ctrl-C to quit...')
         self._controller.set_servo_angle(self._base_servo.channel, self._base_angle - self._base_servo.trim)
         self._controller.set_servo_angle(self._elevation_servo.channel, self._elevation_angle - self._elevation_servo.trim)
-        self.close()
+
         ops = 0
         keep_going = True
         while keep_going:     
             while self._base_angle - self._base_servo.trim < self._base_servo.max:
                 self._controller.set_servo_angle(self._base_servo.channel, self._base_angle - self._base_servo.trim)
-                self._base_angle += Cam._inc
+                self._base_angle += self._inc
+                if self._base_angle - self._base_servo.trim > self._base_servo.max: self._base_angle = self._base_servo.max + self._base_servo.trim
                 ops += 1
 
             while self._elevation_angle - self._elevation_servo.trim > self._elevation_servo.min:
                 self._controller.set_servo_angle(self._elevation_servo.channel, self._elevation_angle - self._elevation_servo.trim)
-                self._elevation_angle -= Cam._inc
+                self._elevation_angle -= self._inc
+                if self._elevation_angle - self._elevation_servo.trim < self._elevation_servo.min: self._elevation_angle = self._elevation_servo.min + self._elevation_servo.trim
                 ops += 1
 
             while self._base_angle - self._base_servo.trim > self._base_servo.min:
                 self._controller.set_servo_angle(self._base_servo.channel, self._base_angle - self._base_servo.trim)
-                self._base_angle -= Cam._inc
+                self._base_angle -= self._inc
+                if self._base_angle - self._base_servo.trim < self._base_servo.min: self._base_angle = self._base_servo.min + self._base_servo.trim
                 ops += 1
 
             while self._elevation_angle - self._elevation_servo.trim < self._elevation_servo.max:
                 self._controller.set_servo_angle(self._elevation_servo.channel, self._elevation_angle - self._elevation_servo.trim)
-                self._elevation_angle += me_arm._inc
+                self._elevation_angle += self._inc
+                if self._elevation_angle - self._elevation_servo.trim > self._elevation_servo.max: self._elevation_angle = self._elevation_servo.max + self._elevation_servo.trim
                 ops += 1
             
             if not repeat: keep_going = False

@@ -26,7 +26,7 @@ from controller import ServoSchema, ControllerSchema
 
 cam_servo_schema = {
     "$id": "http://theRealThor.com/obscam.cam-servo.schema.json",
-    "title": "Servo Attributes",
+    "title": "2DOF Cam Servo Attributes",
     "description": "Describes additional cam servo attributes.",
     "definitions": {
         "cam_servo": {
@@ -48,7 +48,7 @@ cam_servo_schema = {
 
 cam_schema = {
     "$id": "http://theRealThor.com/obscam.cam.schema.json",
-    "title": "meArm",
+    "title": "2DOF Cam",
     "description": "Describes a cam controller setup.",
     "definitions": {
         "cam": {

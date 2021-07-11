@@ -212,7 +212,7 @@ class PCA9685(object):
         return self._resolution
 
 
-    def add_servo(self, channel: int, attributes: ServoAttributes = None):
+    def add_servo(self, channel: int, attributes: ServoAttributes = None, move_to_neutral: bool = True):
         """add_servo
         Adds a servo definition for a given channel.
 
@@ -222,6 +222,9 @@ class PCA9685(object):
         :param attributes: The servo attribute (min/max/neutral pulses and angles).
         :type attributes: ServoAttributes
 
+        :param move_to_neutral: Move the servo to the neutral position if True
+        :type move_to_neutral: bool
+
         """
         if channel < 0 or channel > 15:
             raise ValueError('Channel must be between 0 and 15')
@@ -230,7 +233,7 @@ class PCA9685(object):
             raise KeyError('There is already a servo on this channel: %d', channel)
 
 
-        self._servos[channel] = Servo(self, channel, attributes)
+        self._servos[channel] = Servo(self, channel, attributes, move_to_neutral)
 
     def get_servo(self, channel: int) -> Servo:
         """get_servo

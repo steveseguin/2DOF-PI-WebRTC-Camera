@@ -48,9 +48,9 @@ print('Press Ctrl-C to quit...')
 
 cams = Cam.boot_from_json_file('cam.json')
 all_cams = iter(cams.values())
-for cam in all_cams:
-    cam.test()
-    time.sleep(0.5)
+#for cam in all_cams:
+#    cam.test()
+#    time.sleep(0.5)
 
 def shutdown():
     """shutdown

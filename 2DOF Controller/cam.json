@@ -6,17 +6,17 @@
         "servo_frequency": 50,
         "logging_level": "WARNING"
     },
-    "cam": [{
-            "logging_level": "INFO",
-            "angle-increment": 0.5,
+    "cams": [{
+            "logging_level": "WARNING",
+            "angle-increment": 0.05,
             "servos": {
                 "base": {
                     "channel": 15,
                     "type": "custom",
                     "attributes": {
                         "pulse": {
-                            "min": 0.6,
-                            "max": 2.3,
+                            "min": 0.55,
+                            "max": 2.35,
                             "neutral": 1.4
                         },
                         "angle": {
@@ -27,18 +27,18 @@
                     },
                     "range": {
                         "neutral": -0.0,
-                        "max": 84.5,
-                        "min": -84.5
+                        "max": 84.9,
+                        "min": -84.9
                     },
                     "trim": 0.0
                 },
                 "elevation": {
-                    "channel": 15,
+                    "channel": 14,
                     "type": "custom",
                     "attributes": {
                         "pulse": {
-                            "min": 0.6,
-                            "max": 2.3,
+                            "min": 0.55,
+                            "max": 2.35,
                             "neutral": 1.4
                         },
                         "angle": {
@@ -48,9 +48,9 @@
                         }
                     },
                     "range": {
-                        "neutral": -0.0,
-                        "max": 84.5,
-                        "min": -84.5
+                        "neutral": 68,
+                        "max": 84.9,
+                        "min": 25
                     },
                     "trim": 0.0
                 }

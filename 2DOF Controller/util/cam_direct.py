@@ -49,8 +49,10 @@ pwm = PCA9685.from_json_file('pca9685.json')
 # attributes = MiuzeiSG90Attributes()
 attributes = CustomServoAttributes.from_json_file('servo.json')
 base_channel = 15
-elevation_channel = 12
+elevation_channel = 14
 
+pwm.set_off(14, False)
+pwm.set_off(15, False)
 pwm.add_servo(base_channel, attributes)
 pwm.add_servo(elevation_channel, attributes)
 
@@ -61,49 +63,57 @@ def shutdown():
     pwm.set_servo_angle(elevation_channel, elevation_neutral_angle)
     time.sleep(5)
     software_reset()
+    pwm.set_off(14, False)
+    pwm.set_off(15, False)
 
 # restier shutdown steps
 atexit.register(shutdown)
 
 # arm neutrals and boundaries
-elevation_neutral_angle = 40
-elevation_max_angle = 84.5
-elevation_min_angle = -25
+elevation_neutral_angle = 68
+elevation_max_angle = 85
+elevation_min_angle = 25
 
 base_neutral_angle = 0
-base_max_angle = 65
-base_min_angle = -15
+base_max_angle = 85
+base_min_angle = -85
 
 # current angles
 base_angle = base_neutral_angle
 elevation_angle = elevation_neutral_angle
 
 # movement increment in degrees
-inc = 0.5
+inc = 0.2
 
 logger.info('Press Ctrl-C to quit...')
 pwm.set_servo_angle(base_channel, base_angle) 
-pwm.set_servo_angle(elevation_channel, elevation_open_angle) 
+pwm.set_servo_angle(elevation_channel, elevation_neutral_angle) 
+
 while True:
     while base_angle < base_max_angle:
         pwm.set_servo_angle(base_channel, base_angle)
         base_angle += inc
+        if base_angle > base_max_angle: base_angle = base_max_angle
 
     while elevation_angle > elevation_min_angle:
-        pwm.set_servo_angle(elevation_channel, elevation_angle)
+        pwm.set_servo_angle(elevation_channel, elevation_angle)    
         elevation_angle -= inc
+        if elevation_angle < elevation_min_angle: elevation_angle = elevation_min_angle
     
-    time.sleep(5)
+    time.sleep(2)
 
     while base_angle > base_min_angle:
         pwm.set_servo_angle(base_channel, base_angle)
         base_angle -= inc
+        if base_angle < base_min_angle: base_angle = base_min_angle
 
     while elevation_angle < elevation_max_angle:
         pwm.set_servo_angle(elevation_channel, elevation_angle)
         elevation_angle += inc
+        if elevation_angle > elevation_max_angle: elevation_angle = elevation_max_angle
+        
 
-    time.sleep(5)
+    time.sleep(2)
 
     while base_angle < base_neutral_angle:
         pwm.set_servo_angle(base_channel, base_angle)
@@ -112,3 +122,4 @@ while True:
     while elevation_angle > elevation_neutral_angle:
         pwm.set_servo_angle(elevation_channel, elevation_angle)
         elevation_angle -= inc
+
