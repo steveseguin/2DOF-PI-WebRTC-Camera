@@ -1,0 +1,389 @@
+{
+  "@id": "dtmi:HTXI:MachineInfo;1",
+  "@type": "Interface",
+  "contents": [
+    {
+      "@type": [
+        "Property",
+        "Location"
+      ],
+      "description": {
+        "en": "The location as reported by the Device"
+      },
+      "displayName": {
+        "en": "Reported Location"
+      },
+      "name": "reportedLocation",
+      "schema": "geopoint",
+      "writable": false
+    },
+    {
+      "@type": "Property",
+      "displayName": {
+        "en": "Hostname"
+      },
+      "name": "hostname",
+      "schema": "string",
+      "writable": false
+    },
+    {
+      "@type": "Property",
+      "displayName": {
+        "en": "CPU Architecture"
+      },
+      "name": "cpuArch",
+      "schema": "string",
+      "writable": false
+    },
+    {
+      "@type": "Property",
+      "description": {
+        "en": "Manufacturer/Processor Number/Base Frequency of the processor."
+      },
+      "displayName": {
+        "en": "CPU Information"
+      },
+      "name": "cpuInfo",
+      "schema": "string",
+      "writable": false
+    },
+    {
+      "@type": "Property",
+      "displayName": {
+        "en": "CPU Core Count"
+      },
+      "name": "cpuCores",
+      "schema": "long",
+      "writable": false
+    },
+    {
+      "@type": "Property",
+      "displayName": {
+        "en": "CPU Features"
+      },
+      "name": "cpuFeatures",
+      "schema": "string",
+      "writable": false
+    },
+    {
+      "@type": [
+        "Property",
+        "Frequency"
+      ],
+      "displayName": {
+        "en": "CPU Max Frequency (MHz)"
+      },
+      "name": "cpuMaxfreq",
+      "schema": "integer",
+      "unit": "megahertz",
+      "writable": false
+    },
+    {
+      "@type": "Property",
+      "displayName": {
+        "en": "Baseboard Model"
+      },
+      "name": "baseboardModel",
+      "schema": "string",
+      "writable": false
+    },
+    {
+      "@type": "Property",
+      "displayName": {
+        "en": "Baseboard Serial Number"
+      },
+      "name": "baseboardSerialNumber",
+      "schema": "string",
+      "writable": false
+    },
+    {
+      "@type": "Property",
+      "displayName": {
+        "en": "OS Version"
+      },
+      "name": "osVersion",
+      "schema": "string",
+      "writable": false
+    },
+    {
+      "@type": "Property",
+      "displayName": {
+        "en": "OS Build Number"
+      },
+      "name": "osBuildNumber",
+      "schema": "string",
+      "writable": false
+    },
+    {
+      "@type": [
+        "Property",
+        "DataSize"
+      ],
+      "displayName": {
+        "en": "Memory (Total, GB)"
+      },
+      "name": "memTotal",
+      "schema": "float",
+      "unit": "gibibyte",
+      "writable": false
+    },
+    {
+      "@type": [
+        "Property",
+        "DataSize"
+      ],
+      "displayName": {
+        "en": "Disk (Total, GB)"
+      },
+      "name": "diskTotal",
+      "schema": "float",
+      "unit": "gibibyte",
+      "writable": false
+    },
+    {
+      "@type": "Property",
+      "displayName": {
+        "en": "Local IP Address"
+      },
+      "name": "ipLocal",
+      "schema": "string",
+      "writable": false
+    },
+    {
+      "@type": "Property",
+      "displayName": {
+        "en": "Public IP Address"
+      },
+      "name": "ipPublic",
+      "schema": "string",
+      "writable": false
+    },
+    {
+      "@type": "Telemetry",
+      "description": {
+        "en": "To measure the percentage of the CPU's capacity."
+      },
+      "displayName": {
+        "en": "CPU Loading (%)"
+      },
+      "name": "cpuLoading",
+      "schema": "double"
+    },
+    {
+      "@type": [
+        "Telemetry",
+        "Frequency"
+      ],
+      "description": {
+        "en": "Processor frequency specifies the operating frequency of the CPU's core(s) in MHz."
+      },
+      "displayName": {
+        "en": "CPU Clock (MHz)"
+      },
+      "name": "cpuClock",
+      "schema": "integer",
+      "unit": "megahertz"
+    },
+    {
+      "@type": "Telemetry",
+      "displayName": {
+        "en": "Memory (Free, GB)"
+      },
+      "name": "memFree",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "displayName": {
+        "en": "Memory (Usage %)"
+      },
+      "name": "memUsage",
+      "schema": "float"
+    },
+    {
+      "@type": [
+        "Telemetry",
+        "DataSize"
+      ],
+      "displayName": {
+        "en": "Disk (Free, GB)"
+      },
+      "name": "diskFree",
+      "schema": "float",
+      "unit": "gibibyte"
+    },
+    {
+      "@type": "Telemetry",
+      "displayName": {
+        "en": "Logical DISK (Usage %)"
+      },
+      "name": "diskUsage",
+      "schema": "float"
+    },
+    {
+      "@type": [
+        "Telemetry",
+        "Temperature"
+      ],
+      "displayName": {
+        "en": "Current Temperature"
+      },
+      "name": "currentTemp",
+      "schema": "double",
+      "unit": "degreeCelsius"
+    },
+    {
+      "@type": "Telemetry",
+      "displayName": {
+        "en": "Uptime"
+      },
+      "name": "uptime",
+      "schema": "string"
+    },
+    {
+      "@type": "Command",
+      "commandType": "synchronous",
+      "description": {
+        "en": "Executing this command powers off the device. Attention: The device cannot be powered on remotely, so only use this when there is someone present at site to physically power on the device. "
+      },
+      "displayName": {
+        "en": "Power Off"
+      },
+      "name": "PowerOffDevice",
+      "request": {
+        "@type": "CommandPayload",
+        "displayName": {
+          "en": "request"
+        },
+        "name": "request",
+        "schema": {
+          "@type": "Object",
+          "displayName": {
+            "en": "Object"
+          },
+          "fields": [
+            {
+              "displayName": {
+                "en": "countdown"
+              },
+              "name": "countdown",
+              "schema": "long"
+            },
+            {
+              "displayName": {
+                "en": "reason"
+              },
+              "name": "reason",
+              "schema": "string"
+            }
+          ]
+        }
+      },
+      "response": {
+        "@type": "CommandPayload",
+        "displayName": {
+          "en": "response"
+        },
+        "name": "response",
+        "schema": {
+          "@type": "Object",
+          "displayName": {
+            "en": "Object"
+          },
+          "fields": [
+            {
+              "displayName": {
+                "en": "reason"
+              },
+              "name": "reason",
+              "schema": "string"
+            },
+            {
+              "displayName": {
+                "en": "status"
+              },
+              "name": "status",
+              "schema": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "@type": "Command",
+      "commandType": "synchronous",
+      "description": {
+        "en": "Executing this command reboots the device."
+      },
+      "displayName": {
+        "en": "Reboot"
+      },
+      "name": "RebootDevice",
+      "request": {
+        "@type": "CommandPayload",
+        "displayName": {
+          "en": "request"
+        },
+        "name": "request",
+        "schema": {
+          "@type": "Object",
+          "displayName": {
+            "en": "Object"
+          },
+          "fields": [
+            {
+              "displayName": {
+                "en": "countdown"
+              },
+              "name": "countdown",
+              "schema": "long"
+            },
+            {
+              "displayName": {
+                "en": "reason"
+              },
+              "name": "reason",
+              "schema": "string"
+            }
+          ]
+        }
+      },
+      "response": {
+        "@type": "CommandPayload",
+        "displayName": {
+          "en": "response"
+        },
+        "name": "response",
+        "schema": {
+          "@type": "Object",
+          "displayName": {
+            "en": "Object"
+          },
+          "fields": [
+            {
+              "displayName": {
+                "en": "reason"
+              },
+              "name": "reason",
+              "schema": "string"
+            },
+            {
+              "displayName": {
+                "en": "status"
+              },
+              "name": "status",
+              "schema": "string"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "displayName": {
+    "en": "General Device Information"
+  },
+  "@context": [
+    "dtmi:iotcentral:context;2",
+    "dtmi:dtdl:context;2"
+  ]
+}

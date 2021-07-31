@@ -37,8 +37,7 @@ queue ! application/x-rtp,media=video,encoding-name=H264,payload=96 ! sendrecv.
 
 v4l_pipeline = '''
 webrtcbin name=sendrecv bundle-policy=max-bundle 
-v4l2src {source_params} ! {caps} ! {custom} videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay ! 
-queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
+v4l2src {source_params} ! {caps} ! {custom} videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
 '''
 
 class WebRTCClient:
@@ -288,8 +287,8 @@ if __name__=='__main__':
     if(args.cam_source_params is not None): cam_source_params = args.cam_source_params
     if(args.custom_pipeline is not None): custom_pipeline = args.custom_pipeline
     if(args.framerate is not None): fps = args.framerate
-    if(args.width is not None): fps = args.width
-    if(args.height is not None): fps = args.height
+    if(args.width is not None): width = args.width
+    if(args.height is not None): height = args.height
 
     if cam_source == 'test': gst_pipeline = test_video_pipeline.format(custom=custom_pipeline)
     elif cam_source == 'rpi_cam': gst_pipeline = rpi_cam_pipeline.format(custom=custom_pipeline, width=width, height=height, fps=fps)
