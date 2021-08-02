@@ -4,18 +4,18 @@
       "properties.desired": {
         "schemaVersion": "1.1",
         "runtime": {
-            "type": "docker",
-            "settings": {
-                "minDockerVersion": "v1.25",
-                "loggingOptions": "",
-                "registryCredentials": {
-                    "registryName": {
-                        "address": "innovationcontainerimages.azurecr.io",
-                        "password": "Gz2~0L8~~TSz5SJDV1no~Y.pimG7st~LZm",
-                        "username": "fbb9f8a1-e438-4520-aacb-534dd067a5a9"
-                    }
-                }
+          "type": "docker",
+          "settings": {
+            "minDockerVersion": "v1.25",
+            "loggingOptions": "",
+            "registryCredentials": {
+              "registryName": {
+                "address": "innovationcontainerimages.azurecr.io",
+                "password": "Gz2~0L8~~TSz5SJDV1no~Y.pimG7st~LZm",
+                "username": "fbb9f8a1-e438-4520-aacb-534dd067a5a9"
+              }
             }
+          }
         },
         "systemModules": {
           "edgeAgent": {
@@ -46,7 +46,7 @@
               "createOptions": "{\"NetworkingConfig\":{\"EndpointsConfig\": {\"host\": {}}},HostConfig:{\"Privileged\": true,\"NetworkMode\": \"host\",\"LogConfig\": {\"Type\": \"json-file\",\"Config\": {\"max-file\": \"5\",\"max-size\": \"10m\"}}}}"
             },
             "env": {}
-          },          
+          },
           "camera": {
             "version": "1.0",
             "type": "docker",
@@ -57,33 +57,33 @@
               "createOptions": "{\"NetworkingConfig\":{\"EndpointsConfig\": {\"host\": {}}},HostConfig:{\"Privileged\": true,\"NetworkMode\": \"host\",\"LogConfig\": {\"Type\": \"json-file\",\"Config\": {\"max-file\": \"5\",\"max-size\": \"10m\"}},\"Devices\": [{\"PathOnHost\": \"/dev/vchiq\",\"PathInContainer\": \"/dev/vchiq\",\"CgroupPermissions\": \"rwm\"},{\"PathOnHost\": \"/dev/video0\",\"PathInContainer\": \"/dev/video0\",\"CgroupPermissions\": \"rwm\"}]}}"
             },
             "env": {
-                "CAM_SOURCE": {
-                    "value": "v4l2src"
-                },
-                "CAM_SOURCE_PARAMS": {
-                    "value": "device=/dev/video0"
-                },
-                "CUSTOM_PIPELINE": {
-                    "value": "videoflip method=vertical-flip !"
-                },
-                "STREAM_ID": {
-                    "value": "htxi-robot"
-                },
-                "SERVER": {
-                    "value": "wss://apibackup.obs.ninja:443"
-                },
-                "WIDTH": {
-                    "value": "1280"
-                },
-                "HEIGHT": {
-                    "value": "720"
-                },
-                "FPS": {
-                    "value": "10"
-                },
-                "CAPS": {
-                    "value": "video/x-raw,width={width},height={height},framerate={fps}/1"
-                }
+              "CAM_SOURCE": {
+                "value": "v4l2src"
+              },
+              "CAM_SOURCE_PARAMS": {
+                "value": "device=/dev/video0"
+              },
+              "CUSTOM_PIPELINE": {
+                "value": "videoflip method=vertical-flip !"
+              },
+              "STREAM_ID": {
+                "value": "htxi-robot"
+              },
+              "SERVER": {
+                "value": "wss://apibackup.obs.ninja:443"
+              },
+              "WIDTH": {
+                "value": "1280"
+              },
+              "HEIGHT": {
+                "value": "720"
+              },
+              "FPS": {
+                "value": "10"
+              },
+              "CAPS": {
+                "value": "video/x-raw,width={width},height={height},framerate={fps}/1"
+              }
             }
           },
           "controller": {
@@ -92,20 +92,19 @@
             "status": "running",
             "restartPolicy": "always",
             "settings": {
-              "image": "mcr.microsoft.com/azureiotedge-simulated-temperature-sensor:1.0",
-              "createOptions": ""
+              "image": "innovationcontainerimages.azurecr.io/obs-cam:controller-arm32v7",
+              "createOptions": "{\"HostConfig\":{\"LogConfig\": {\"Type\": \"json-file\",\"Config\": {\"max-file\": \"5\",\"max-size\": \"10m\"}},\"Devices\": [{\"PathOnHost\": \"/dev/i2c-1\",\"PathInContainer\": \"/dev/i2c-1\",\"CgroupPermissions\": \"rwm\"}]}}"
             },
-            "env": {
-            }
+            "env": {}
           }
         }
-      }  
+      }
     },
     "$edgeHub": {
       "properties.desired": {
         "schemaVersion": "1.1",
         "routes": {
-            "route": "FROM /* INTO $upstream"
+          "route": "FROM /* INTO $upstream"
         },
         "storeAndForwardConfiguration": {
           "timeToLiveSecs": 7200
@@ -113,13 +112,81 @@
       }
     },
     "device": {
-      "properties.desired": {}
+      "properties.desired": {
+        "debug": true,
+        "period": 10
+      }
     },
     "camera": {
       "properties.desired": {}
     },
     "controller": {
-      "properties.desired": {}
+      "properties.desired": {
+        "environment": {
+          "controller": {
+            "address": 64,
+            "frequency": 26500000,
+            "resolution": 4096,
+            "servo_frequency": 50,
+            "logging_level": "WARNING"
+          },
+          "servos": {
+            "logging_level": "WARNING",
+            "angle_increment": 0.05,
+            "base": {
+              "channel": 15,
+              "type": "custom",
+              "attributes": {
+                "pulse": {
+                  "min": 0.55,
+                  "max": 2.35,
+                  "neutral": 1.4
+                },
+                "angle": {
+                  "min": -85.0,
+                  "max": 85.0,
+                  "neutral": -0.0
+                }
+              },
+              "range": {
+                "neutral": -0.0,
+                "max": 84,
+                "min": -84
+              },
+              "trim": 0.0
+            },
+            "elevation": {
+              "channel": 14,
+              "type": "custom",
+              "attributes": {
+                "pulse": {
+                  "min": 0.55,
+                  "max": 2.35,
+                  "neutral": 1.4
+                },
+                "angle": {
+                  "min": -85.0,
+                  "max": 85.0,
+                  "neutral": -0.0
+                }
+              },
+              "range": {
+                "neutral": 68,
+                "max": 84.9,
+                "min": 25
+              },
+              "trim": 0.0
+            }
+          }
+        },
+        "debug": true,
+        "period": 10,
+        "powerdown": 30,
+        "position": {
+          "base": 0,
+          "elevation": 68
+        }
+      }
     }
   }
 }

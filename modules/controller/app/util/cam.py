@@ -21,17 +21,15 @@
 #
 # pylint: disable=C0103
 """Simple test routine for meArm on RPI"""
-import time
 import logging
 import atexit
-import json
+import time
 from cam import Cam, CamServo
 from controller import PCA9685, software_reset
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 print('Press Ctrl-C to quit...')
-
 
 # resolution = 4096
 # frequency = 26500000 # This has been tweaked to provide exact pulse timing for the board. 
@@ -45,12 +43,6 @@ print('Press Ctrl-C to quit...')
 #     resolution,
 #     servo_frequency)
 #controller = PCA9685.from_json_file('pca9685.json')
-
-cams = Cam.boot_from_json_file('cam.json')
-all_cams = iter(cams.values())
-#for cam in all_cams:
-#    cam.test()
-#    time.sleep(0.5)
 
 def shutdown():
     """shutdown
@@ -66,3 +58,10 @@ def shutdown():
 
 # restier shutdown steps
 atexit.register(shutdown)
+
+Cam.boot_from_json_file('cam.json')
+for name in Cam.get_names():
+    cam = Cam.get(name)
+    print(f'{cam}')
+    cam.test()
+    time.sleep(0.5)

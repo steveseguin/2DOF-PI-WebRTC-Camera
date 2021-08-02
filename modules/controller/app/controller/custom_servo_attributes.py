@@ -21,6 +21,7 @@
 #
 # pylint: disable=C0103
 import json
+from typing import Dict
 from jsonschema import validate
 from .servo_attributes import ServoAttributes
 from .schemas import servo_schema as schema
@@ -42,7 +43,7 @@ class CustomServoAttributes(ServoAttributes):
     neutral_angle = 0
 
     @classmethod
-    def from_json_file(cls, json_file:str):
+    def from_json_file(cls, json_file:str) -> object:
         """from_json_file
         Generates CustomServoAttributes from json file
         :param json_file: name of the file containing the json data. Must adhere to Controller.ServoSchema
@@ -55,7 +56,7 @@ class CustomServoAttributes(ServoAttributes):
         return instance
 
     @classmethod
-    def from_json(cls, json_string:str):
+    def from_json(cls, json_string:str) -> object:
         """from_json
         Generates CustomServoAttributes from json data
         :param json_string: String containing the json data. Must adhere to Controller.ServoSchema
@@ -67,7 +68,7 @@ class CustomServoAttributes(ServoAttributes):
         return instance
 
     @classmethod
-    def from_dict(cls, data:{}):
+    def from_dict(cls, data:Dict[str, object]) -> object:
         """from_dict
         Generates CustomServoAttributes from dictionary
         :param data: The dictionary containing the servo data. Must adhere to Controller.ServoSchema

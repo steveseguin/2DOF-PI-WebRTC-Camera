@@ -56,28 +56,18 @@ cam_schema = {
             "properties": {
                 "logging_level": {"type": "string", "enum": ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"]},
                 "angle-increment": {"type": "number"},
-                "servos": {
-                    "type": "object",
-                    "properties": {
-                        "base": { "$ref": "http://theRealThor.com/obscam.cam-servo.schema.json/#/definitions/cam_servo"},
-                        "elevation": { "$ref": "http://theRealThor.com/obscam.cam-servo.schema.json/#/definitions/cam_servo"}
-                    },
-                    "required": ["base", "elevation"]
-                },
+                "base": { "$ref": "http://theRealThor.com/obscam.cam-servo.schema.json/#/definitions/cam_servo"},
+                "elevation": { "$ref": "http://theRealThor.com/obscam.cam-servo.schema.json/#/definitions/cam_servo"}
             },
-            "required": ["angle-increment", "servos"]
+            "required": ["angle-increment", "base", "elevation"]
         },
         "cam-controller": {
             "type": "object",
             "properties": {
                 "controller": { "$ref": "http://theRealThor.com/cam.servo-controller.schema.json/#/definitions/controller_attributes"},
-                "cams": {
-                    "type": "array",
-                    "items": {"$ref": "#/definitions/cam"},
-                    "minItems": 1
-                }
+                "servos": { "$ref": "#/definitions/cam"}
             },
-            "required": ["controller", "cams"]
+            "required": ["controller", "servos"]
         },
         "environment": {
             "type": "array",

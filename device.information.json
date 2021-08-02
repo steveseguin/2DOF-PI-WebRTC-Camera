@@ -1,5 +1,5 @@
 {
-  "@id": "dtmi:HTXI:MachineInfo;1",
+  "@id": "dtmi:HTXI:MachineInfo;2",
   "@type": "Interface",
   "contents": [
     {
@@ -380,7 +380,7 @@
     }
   ],
   "displayName": {
-    "en": "General Device Information"
+    "en": "device information"
   },
   "@context": [
     "dtmi:iotcentral:context;2",

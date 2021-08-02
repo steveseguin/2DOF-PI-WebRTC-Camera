@@ -24,13 +24,24 @@ import sys
 import asyncio
 import datetime
 import json
+from typing import Dict
 
 from azure.iot.device.aio import IoTHubModuleClient
 from azure.iot.device import MethodRequest
-from device import Device
+from cam import Cam
+from controller import software_reset
 from command import CommandProcessor
 
 async def main():
+
+    def boot_environment(env:Dict[str,object], test:bool = False):
+        nonlocal last_action
+        cams: Dict[str,Cam] = Cam.boot_from_dict(env)
+        for name in Cam.get_names():
+            cam:Cam = Cam.get(name)
+            if test: cam.test()
+            cam.turn_off()
+        last_action = datetime.datetime.now()
 
     async def command_handler(request: MethodRequest):
         # Define behavior for handling commands
@@ -49,11 +60,18 @@ async def main():
         print(f'{datetime.datetime.now()}: [INFO] Received module twin from IoTC: {twin}')
         twin_update_handler(twin['desired'])
 
+    async def powerdown_watcher():
+        if (datetime.datetime.now() - last_action).seconds > powerdown: 
+            for name in Cam.get_names():
+                cam:Cam = Cam.get(name)
+                cam.turn_off()
+        await asyncio.sleep(1)
+
     async def send_telemetry():
         # Define behavior for sending telemetry
         while True:
             try:
-                telemetry = device.Telemetry
+                telemetry = {}
                 payload = json.dumps(telemetry)
                 if debug: print(f'{datetime.datetime.now()}: [INFO] Device telemetry: {payload}')
                 await module_client.send_message(payload)  
@@ -63,16 +81,14 @@ async def main():
                 await asyncio.sleep(sampleRateInSeconds)       
 
     def twin_update_handler(patch):
-        nonlocal debug, sampleRateInSeconds
+        nonlocal debug, sampleRateInSeconds, powerdown, env
         if debug: print(f'{datetime.datetime.now()}: [INFO] Received twin update from IoT Central: {patch}')
         if 'period' in patch: sampleRateInSeconds = patch['period']
         if 'debug' in patch: debug = patch['debug']
-
-    async def report_properties():
-        propertiesToUpdate = device.Info
-        if debug: print(f'{datetime.datetime.now()}: [INFO] Device properties sent to IoT Central: {propertiesToUpdate}')
-        await module_client.patch_twin_reported_properties(propertiesToUpdate)
-        if debug: print(f'{datetime.datetime.now()}: [INFO] Device properties updated.') 
+        if 'powerdown' in patch: powerdown = patch['powerdown']
+        if 'environment' in patch: 
+            env = patch['environment']
+            boot_environment(env)
 
     try:
         if not sys.version >= "3.5.3":
@@ -80,22 +96,31 @@ async def main():
             raise Exception( 'This module requires python 3.5.3+. Current version of Python: %s' % sys.version )
         print(f'{datetime.datetime.now()}: [INFO] IoT Hub Client for Python')
 
+        powerdown = 60                  # can be updated through the module twin in IoTC
         sampleRateInSeconds = 10        # can be updated through the module twin in IoTC
         debug = True                    # can be updated through the module twin in IoTC
-        device = Device()
+        env = {}                        # cam environment definition. can be updated through the module twin in IoTC
+        last_action = datetime.datetime.now()
 
         # The client object is used to interact with your Azure IoT hub.
         module_client = IoTHubModuleClient.create_from_edge_environment()
         module_client.on_method_request_received = command_handler
         module_client.on_twin_desired_properties_patch_received = twin_update_handler
         await module_client.connect()
+        await get_twin()
+        boot_environment(env, True)
 
         # start send telemetry and receive commands
         await asyncio.gather(
-            get_twin(),
-            report_properties(),
-            send_telemetry()
+            send_telemetry(),
+            powerdown_watcher()
         )     
+
+        for name in Cam.get_names():
+            cam = Cam.get(name)
+            cam.reset()
+            cam.turn_off()
+        software_reset()
 
     except Exception as e:
         print(f'{datetime.datetime.now()}: [ERROR] Unexpected error {e}')

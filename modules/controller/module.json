@@ -1,0 +1,17 @@
+{
+  "$schema-version": "0.0.1",
+  "description": "",
+  "image": {
+    "repository": "innovationcontainerimages.azurecr.io/obs-cam",
+    "tag": {
+      "version": "controller",
+      "platforms": {
+        "arm32v7": "./Dockerfile.arm32v7",
+        "arm32v7.debug": "./Dockerfile.arm32v7.debug"
+      }
+    },
+    "buildOptions": [],
+    "contextPath": "./"
+  },
+  "language": "python"
+}

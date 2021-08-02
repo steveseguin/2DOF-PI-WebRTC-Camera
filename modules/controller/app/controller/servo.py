@@ -26,6 +26,7 @@
 import logging
 import time
 import math
+from typing import Tuple
 from .servo_attributes import ServoAttributes
 from .miuzei_sg90_attributes import MiuzeiSG90Attributes
 
@@ -128,7 +129,7 @@ class Servo(object):
         pulse //= pulse_length
         return int(pulse)
 
-    def _calculate_servo_ticks_from_angle(self, angle: float) -> (float, int):
+    def _calculate_servo_ticks_from_angle(self, angle: float) -> Tuple[float, int]:
         """_calculate_servo_ticks_from_angle
         Calculate the number of on ticks to achieve a certain servo angle.
         

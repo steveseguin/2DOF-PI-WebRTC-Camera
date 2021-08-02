@@ -22,6 +22,7 @@
 # pylint: disable=C0103
 """Module defining a camera servo property class"""
 import json
+from typing import Dict
 from jsonschema import validate, RefResolver, Draft4Validator, ValidationError
 from controller import ServoAttributes, ES08MAIIAttributes, CustomServoAttributes, MiuzeiSG90Attributes, ServoSchema
 from .schemas import cam_servo_schema, schema_store
@@ -59,7 +60,7 @@ class CamServo(object):
         self._trim = trim
 
     @classmethod
-    def from_json_file(cls, json_file:str):
+    def from_json_file(cls, json_file:str) -> object:
         """from_json_file
         Generates CamServo from json file
         :param json_file: name of the file containing the json data. Must adhere to cam.ServoSchema
@@ -67,8 +68,8 @@ class CamServo(object):
         """
         with open(json_file) as file:
             data = json.load(file)
-            resolver = RefResolver('', arm_servo_schema, schema_store)
-            validator = Draft4Validator(arm_servo_schema, [], resolver)
+            resolver = RefResolver('', cam_servo_schema, schema_store)
+            validator = Draft4Validator(cam_servo_schema, [], resolver)
             validator.check_schema(cam_servo_schema)
             if not validator.is_valid(data):
                 raise ValidationError('Could not validate cam servo json. Check your json file', instance = 1)
@@ -76,15 +77,15 @@ class CamServo(object):
         return instance
 
     @classmethod
-    def from_json(cls, json_string:str):
+    def from_json(cls, json_string:str) -> object:
         """from_json
         Generates CamServo from json data
         :param json_string: String containing the json data. Must adhere to cam.ServoSchema
         :type json_string: str
         """
         data = json.loads(json_string)
-        resolver = RefResolver('', arm_servo_schema, schema_store)
-        validator = Draft4Validator(arm_servo_schema, [], resolver)
+        resolver = RefResolver('', cam_servo_schema, schema_store)
+        validator = Draft4Validator(cam_servo_schema, [], resolver)
         validator.check_schema(cam_servo_schema)
         if not validator.is_valid(data):
             raise ValidationError('Could not validate meArm servo json. Check your json file', instance = 1)
@@ -92,7 +93,7 @@ class CamServo(object):
         return instance
 
     @classmethod
-    def from_dict(cls, data:{}):
+    def from_dict(cls, data:Dict[str, object]) -> object:
         """from_dict
         Generates CamServo from dictionary
         :param data: The dictionary containing the servo data. Must adhere to cam.ServoSchema

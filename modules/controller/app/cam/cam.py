@@ -24,6 +24,7 @@
 import time
 import logging
 import json
+from typing import Dict, List, Tuple
 from jsonschema import validate, RefResolver, Draft4Validator, ValidationError, SchemaError
 from controller import PCA9685, Servo, ServoAttributes, MiuzeiSG90Attributes, ES08MAIIAttributes, CustomServoAttributes, software_reset
 from .cam_servo import CamServo
@@ -44,7 +45,7 @@ class Cam(object):
     elevation_trim = 5.0
     _inc = 0.5                      # servo movement increment in degrees
     _instances = {}
-    _controllers: [int] = []
+    _controllers: List[int] = []
 
     def __init__(self, 
             controller: PCA9685,
@@ -122,7 +123,7 @@ class Cam(object):
         self._elevation_angle = self._elevation_servo.neutral + self._elevation_servo.trim
     
     @classmethod
-    def boot_from_json_file(cls, json_file:str):
+    def boot_from_json_file(cls, json_file:str) -> Dict[str,object]:
         """boot_from_json_file
         Generates a cam contoller environment from json file
         :param json_file: name of the file containing the json data. Must adhere to cam.CamSchema
@@ -138,7 +139,7 @@ class Cam(object):
         return cls.boot_from_dict(data)
 
     @classmethod
-    def boot_from_json(cls, json_string:str):
+    def boot_from_json(cls, json_string:str) -> Dict[str,object]:
         """boot_from_json
         Generates a cam controller environment from json data
         :param json_string: String containing the json data. Must adhere to cam.CamSchema
@@ -153,33 +154,33 @@ class Cam(object):
         return cls.boot_from_dict(data)
 
     @classmethod
-    def boot_from_dict(cls, data:{}):
+    def boot_from_dict(cls, data:Dict[str,object]) -> Dict[str,object]:
         """boot_from_dict
         Generates a cam controller environment from dictionary
         :param data: The dictionary containing the servo data. Must adhere to cam.CamSchema
         :type data: dictionary
         """
-        for c in data:
+        if type(data) is list: d = data
+        else: d = [data]
+        for c in d:
+            level = "INFO"
             controller = PCA9685.from_dict(c['controller'])
-            for a in c['cams']:
-                level = "INFO"
-                s = a['servos']
-                tag = str(s['base']['channel']).zfill(2) + str(s['elevation']['channel']).zfill(2)
-                id = str(controller.address).zfill(6) + tag
+            if 'logging_level' in c['servos']: level = c['servos']['logging_level']
 
-                if id in Cam._instances: continue
-                if a['logging_level'] is not None: level = a['logging_level']
-                obj = cls(controller, s['base']['channel'], s['elevation']['channel'], False, level)
-                obj._base_servo = CamServo.from_dict(s['base'])
-                obj._elevation_servo = CamServo.from_dict(s['elevation']) 
-                obj._inc = a['angle-increment']
-                obj.initialize()
-                cls._instances[id] = obj
+            tag = str(c['servos']['base']['channel']).zfill(2) + str(c['servos']['elevation']['channel']).zfill(2)
+            id = str(controller.address).zfill(6) + tag
+            if id in Cam._instances: Cam._instances[id].delete(False)
+            obj = cls(controller, c['servos']['base']['channel'], c['servos']['elevation']['channel'], False, level)
+            obj._base_servo = CamServo.from_dict(c['servos']['base'])
+            obj._elevation_servo = CamServo.from_dict(c['servos']['elevation']) 
+            obj._inc = c['servos']['angle_increment']
+            obj.initialize()
+            cls._instances[id] = obj
         return cls._instances
 
     @classmethod
     def createWithServoParameters(cls, controller: PCA9685,
-            base_channel: int, elevation_channel: int):
+            base_channel: int, elevation_channel: int) -> object:
         """createWithServoParameters
         Creates a cam controller using parameters.
 
@@ -222,12 +223,13 @@ class Cam(object):
             cam = Cam._instances[key]
             cam.reset()
             cam.turn_off()
+            cam.delete(False)
         if clear: 
             cls._instances.clear()
             software_reset()
 
     @classmethod
-    def get(cls, id: str):
+    def get(cls, id: str) -> object:
         """get
         Gets the cam controller with specified id. 
 
@@ -242,17 +244,17 @@ class Cam(object):
         raise KeyError("No cams with id %s", id)
 
     @classmethod
-    def get_names(cls) -> [str]:
+    def get_names(cls) -> List[str]:
         """get_names
         Gets a list of registered cams.
 
         :return: A list of cam names (ids)
         :rtype: [str]
         """
-        return cls._instances.keys()
+        return list(cls._instances.keys())
 
     @classmethod
-    def get_controllers(cls) -> [int]:
+    def get_controllers(cls) -> List[int]:
         """get_controllers
         Gets a list of registered controller addresses
 
@@ -280,7 +282,7 @@ class Cam(object):
         return self._id
 
     @property
-    def position(self) -> (float, float):
+    def position(self) -> Tuple[float, float]:
         """Gets the current position of the gripper
 
         :return: The current position
@@ -289,7 +291,7 @@ class Cam(object):
         return (self._base_angle, self._elevation_angle)
 
     @property 
-    def boundaries(self) -> ((float, float, float, float), (float, float, float, float)):
+    def boundaries(self) -> Tuple[Tuple[float, float, float, float], Tuple[float, float, float, float]]:
         """Returns the pan and tile boundaries for the cam
 
         :return: The boundaries for pan and tile
@@ -299,14 +301,15 @@ class Cam(object):
             (self._base_servo.min, self._base_servo.max, self._base_servo.neutral, self._base_servo.trim),
             (self._elevation_servo.min, self._elevation_servo.max, self._elevation_servo.neutral, self._elevation_servo.trim))
 
-    def delete(self):
+    def delete(self, reset:bool=True):
         """delete
         Deletes the meArm
         """
-        self.reset()
+        self.turn_off()
+        if reset: self.reset()
         del Cam._instances[self._id]
 
-    def pan_to(self, angle: float):
+    def pan_to(self, angle: float) -> float:
         """ Pan the camera horizontally to the given angle. 
         
         :param angle: The angle to which to pan from the current position. Can be positive or negative.
@@ -329,7 +332,7 @@ class Cam(object):
         self.turn_off()
         return self._base_angle
 
-    def pan_by(self, angle: float):
+    def pan_by(self, angle: float) -> float:
         """ Pan the camera horizontally and incrementally by the given angle. 
         
         :param angle: The angle by which to increment the pan. Can be positive or negative.
@@ -353,7 +356,7 @@ class Cam(object):
         self.turn_off()
         return self._base_angle
 
-    def tilt_to(self, angle: float):
+    def tilt_to(self, angle: float) -> float:
         """ Tile the camera vertically to the given angle. 
         
         :param angle: The angle to which to tilt from the current elevation. Can be positive or negative.
@@ -376,7 +379,7 @@ class Cam(object):
         self.turn_off()
         return self._elevation_angle
 
-    def tilt_by(self, angle: float):
+    def tilt_by(self, angle: float) -> float:
         """ Tilt the camera incrementally by the given angle. 
         
         :param angle: The angle by which to increment the tilt. Can be positive or negative.
@@ -447,6 +450,7 @@ class Cam(object):
             self._controller.set_off(self._base_servo.channel, True)
             self._controller.set_off(self._elevation_servo.channel, True)
             self._turnedOff = True
+            self._logger.warning(f'Servo channels for {self._id} have been turned off.')
 
     def turn_on(self):
         """turn_on
@@ -456,6 +460,7 @@ class Cam(object):
             self._controller.set_off(self._base_servo.channel, False)
             self._controller.set_off(self._elevation_servo.channel, False)
             self._turnedOff = False
+            self._logger.warning(f'Servo channels for {self._id} have been turned on.')
 
     def test(self, repeat: bool = False) -> int:
         """Simple loop to test the cam controller
@@ -471,8 +476,7 @@ class Cam(object):
         self._controller.set_servo_angle(self._elevation_servo.channel, self._elevation_angle - self._elevation_servo.trim)
 
         ops = 0
-        keep_going = True
-        while keep_going:     
+        while True:     
             while self._base_angle - self._base_servo.trim < self._base_servo.max:
                 self._controller.set_servo_angle(self._base_servo.channel, self._base_angle - self._base_servo.trim)
                 self._base_angle += self._inc
@@ -497,6 +501,16 @@ class Cam(object):
                 if self._elevation_angle - self._elevation_servo.trim > self._elevation_servo.max: self._elevation_angle = self._elevation_servo.max + self._elevation_servo.trim
                 ops += 1
             
-            if not repeat: keep_going = False
+            while self._base_angle - self._base_servo.trim < self._base_servo.neutral:
+                self._controller.set_servo_angle(self._base_servo.channel, self._base_angle - self._base_servo.trim)
+                self._base_angle += self._inc
+                ops += 1
+
+            while self._elevation_angle - self._elevation_servo.trim > self._elevation_servo.neutral:
+                self._controller.set_servo_angle(self._elevation_servo.channel, self._elevation_angle - self._elevation_servo.trim)
+                self._elevation_angle -= self._inc
+                ops += 1
+
+            if not repeat: break
         
         return ops

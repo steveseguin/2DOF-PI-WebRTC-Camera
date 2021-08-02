@@ -32,6 +32,7 @@ import logging
 import time
 import math
 import json
+from typing import Dict
 from jsonschema import validate
 from .servo import Servo
 from .servo_attributes import ServoAttributes
@@ -133,7 +134,7 @@ class PCA9685(object):
         logger.info("Registered controller on address %d" % address)
 
     @classmethod
-    def from_json_file(cls, json_file:str):
+    def from_json_file(cls, json_file:str) -> object:
         """from_json_file
         Generates PCA9685 from json file
         :param json_file: name of the file containing the json data. Must adhere to Controller.ControllerSchema
@@ -146,7 +147,7 @@ class PCA9685(object):
         return instance
 
     @classmethod
-    def from_json(cls, json_string:str):
+    def from_json(cls, json_string:str) -> object:
         """from_json
         Generates PCA9685 from json data
         :param json_string: String containing the json data. Must adhere to Controller.ControllerSchema
@@ -158,7 +159,7 @@ class PCA9685(object):
         return instance
 
     @classmethod
-    def from_dict(cls, data:{}):
+    def from_dict(cls, data:Dict[str, object]) -> object:
         """from_dict
         Generates PCA9685 from dictionary
         :param data: The dictionary containing the servo data. Must adhere to Controller.ControllerSchema
@@ -203,13 +204,13 @@ class PCA9685(object):
         return self._resolution
 
     @property
-    def servos(self) -> {}:
+    def servos(self) -> Dict[str, object]:
         """Gets the collection of servos on the board.
 
         :return: a list of servos registerd on the board.
         :rtype: Collection of Servo
         """
-        return self._resolution
+        return self._servos
 
 
     def add_servo(self, channel: int, attributes: ServoAttributes = None, move_to_neutral: bool = True):
