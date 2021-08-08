@@ -120,6 +120,7 @@ class PCA9685(object):
         self._resolution = resolution
         self._address = address
         self._device = i2c.get_i2c_device(address, **kwargs)
+        self._warn_on_on_off = True
 
         self.set_all_pwm(0, 0)
         self._device.write8(MODE2, OUTDRV)
@@ -172,8 +173,7 @@ class PCA9685(object):
             data['resolution'],
             data['servo_frequency']
         )
-        if data['logging_level'] is not None:
-            logger.setLevel(data['logging_level'])
+        if 'logging_level' in data: logger.setLevel(data['logging_level'])
         return instance
 
     @property
@@ -339,6 +339,7 @@ class PCA9685(object):
             mode = oldmode & 0xEF
             logger.info('Setting servo on channel %d to PWM', channel)
         self._device.write8(LED0_OFF_H+4*channel, mode)
+        self._warn_on_on_off = True
 
 
     def set_pwm(self, channel: int, on_ticks: int, off_ticks: int):
@@ -362,10 +363,20 @@ class PCA9685(object):
         if on_ticks > off_ticks:
             raise ValueError('Value for on_ticks must be less than or equal to value for off_ticks')
 
-        self._device.write8(LED0_ON_L+4*channel, on_ticks & 0xFF)
-        self._device.write8(LED0_ON_H+4*channel, on_ticks >> 8)
-        self._device.write8(LED0_OFF_L+4*channel, off_ticks & 0xFF)
-        self._device.write8(LED0_OFF_H+4*channel, off_ticks >> 8)
+        offmode = self._device.readU8(LED0_OFF_H+4*channel) & 0x10          # see whether channel is permamently set off
+        onmode = self._device.readU8(LED0_ON_H+4*channel) & 0x10            # see whether channel is permanently set on
+
+        if offmode != 0 and self._warn_on_on_off: 
+            logger.warning(f"Channel {channel} is currently turned off. Setting PMW values but the channel will not actuate until turned on.")
+            self._warn_on_on_off = False
+        if onmode != 0 and self._warn_on_on_off: 
+            logger.warning(f"Channel {channel} is currently turned on. Setting PMW values but the channel will not actuate until turn-on is removed.")
+            self._warn_on_on_off = False
+
+        self._device.write8(LED0_ON_L+4*channel, on_ticks & 0xFF)           # & 0xFF ensures the only the first 8 bits are used to set the register
+        self._device.write8(LED0_ON_H+4*channel, (on_ticks >> 8)|onmode)    # |onmode ensures that the channel set on is not changed
+        self._device.write8(LED0_OFF_L+4*channel, off_ticks & 0xFF)         # & 0xFF ensures the only the first 8 bits are used to set the register
+        self._device.write8(LED0_OFF_H+4*channel, (off_ticks >> 8)|offmode) # |offmode ensures that the channel set off is not changed 
 
     def set_all_pwm(self, on_ticks: int, off_ticks: int):
         """set_pwm

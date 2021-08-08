@@ -151,18 +151,18 @@ class Servo(object):
         elif angle < self._attributes.neutral_angle:
             pulse -= ((angle + self._attributes.neutral_angle) * (self._attributes.neutral_pulse - self._attributes.min_pulse)) / \
                 (self._attributes.min_angle + self._attributes.neutral_angle)
-        self._logger.info('Angle %f -> pulse %f', angle, pulse)
+        self._logger.debug('Angle %f -> pulse %f', angle, pulse)
         return self._calculate_servo_ticks_from_pulse(pulse), pulse
 
     def set_pulse(self, pulse: float):
         """set_pulse
         Sets the servo to a certain pulse width.
         
-        :param pulse: The desired pulse lenght
+        :param pulse: The desired pulse length
         :type pulse: float
         """
         ticks = self._calculate_servo_ticks_from_pulse(pulse)
-        self._logger.info('Channel %d: %f pulse -> %d ticks', self._channel, pulse, ticks)
+        self._logger.debug('Channel %d: %f pulse -> %d ticks', self._channel, pulse, ticks)
         self._controller.set_pwm(self._channel, 0, ticks)
         self._pulse = pulse
         self._ticks = ticks
@@ -175,7 +175,7 @@ class Servo(object):
         :type angle: float
         """
         ticks, pulse = self._calculate_servo_ticks_from_angle(angle)
-        self._logger.info('Channel %d: %f angle -> %d ticks', self._channel, angle, ticks)
+        self._logger.debug('Channel %d: %f angle -> %d ticks', self._channel, angle, ticks)
         self._controller.set_pwm(self._channel, 0, ticks)
         self._angle = angle
         self._ticks = ticks

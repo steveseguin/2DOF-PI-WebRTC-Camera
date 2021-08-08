@@ -20,11 +20,10 @@
 # THE SOFTWARE.
 #
 import asyncio
-import json
 import datetime
-import requests
 import datetime
 
+from typing import List
 from azure.iot.device.aio import IoTHubModuleClient
 from azure.iot.device import MethodResponse
 from azure.iot.device import MethodRequest
@@ -35,15 +34,17 @@ class CommandProcessor:
     @staticmethod
     def Commands(): 
         return {
-            'Test': CommandProcessor.test
-            #'Pan': CommandProcessor.pan,
-            #'Tilt': CommandProcessor.tilt,
-            #'Nudge': CommandProcessor.nudge
+            'Test': CommandProcessor.test,
+            'PanBy': CommandProcessor.pan_or_tilt,
+            'PanTo': CommandProcessor.pan_or_tilt,
+            'TiltBy': CommandProcessor.pan_or_tilt,
+            'TiltTo': CommandProcessor.pan_or_tilt,
+            'Nudge': CommandProcessor.nudge
         }
 
     @staticmethod
     async def test(device_client:IoTHubModuleClient, request:MethodRequest):
-        print(f'{datetime.datetime.now()}: Initiating test run')
+        print(f'{datetime.datetime.now()}: [INFO] Initiating test run')
         countdown = request.payload.get("countdown", 0)
         response = MethodResponse.create_from_method_request(
             request, status = 202
@@ -58,9 +59,104 @@ class CommandProcessor:
         {
             'Test': {
                 'value': {
-                    'status': f'Device test completed at {datetime.datetime.now()}.'
+                    'status': f'Device test completed at {datetime.datetime.now()}.',
+                    'position': {
+                        'base': cam.position[0],
+                        'elevation': cam.position[1]
+                    }
                 }
             }
         })
-            
-    
+
+    @staticmethod
+    async def pan_or_tilt(device_client:IoTHubModuleClient, request:MethodRequest):
+        print(f'{datetime.datetime.now()}: Initiating {request.name}')
+        angle = request.payload.get("angle", 0)
+        response = MethodResponse.create_from_method_request(
+            request, status = 202
+        )
+        await device_client.send_method_response(response)         # immidiatly send acknowledgement of asynchronous command
+        names:List[str] = Cam.get_names()
+        cam:Cam = Cam.get(names[0])
+        if request.name == 'PanBy': 
+            cam.pan_by(angle)
+            props = {'PanBy': {}}
+        elif request.name == 'PanTo': 
+            cam.pan_to(angle)
+            props = {'PanTo': {}}
+        elif request.name == 'TiltBy': 
+            cam.tilt_by(angle)
+            props = {'TiltBy': {}}
+        elif request.name == 'TiltTo': 
+            cam.tilt_to(angle)
+            props = {'TiltTo': {}}
+        else:
+            print(f'{datetime.datetime.now()}: [ERROR] Unknown method: {request.name}')
+            return
+        
+        # send command status update via property update
+        props[request.name] = {
+                'value': {
+                    'status': f'Command {request.name} completed at {datetime.datetime.now()}.',
+                    'position': {
+                        'base': cam.position[0],
+                        'elevation': cam.position[1]
+                    }
+                }
+            }
+        await device_client.patch_twin_reported_properties(props)
+        await device_client.patch_twin_reported_properties({
+            'position': {
+                'base': cam.position[0],
+                'elevation': cam.position[1]
+            }
+        })
+
+    @staticmethod 
+    async def nudge(device_client:IoTHubModuleClient, request:MethodRequest):
+        print(f'{datetime.datetime.now()}: Initiating {request.name}')
+        direction = request.payload.get("direction", "")
+        response = MethodResponse.create_from_method_request(
+            request, status = 202
+        )
+        await device_client.send_method_response(response)         # immidiatly send acknowledgement of asynchronous command
+        names:List[str] = Cam.get_names()
+        cam:Cam = Cam.get(names[0])
+        pos = [cam.position[0], cam.position[1]]
+        pos_prime = [cam.position[0], cam.position[1]]
+        if direction == 'up': 
+            pos_prime[1] -= 5
+            pos[1] += 0.5
+        elif direction == 'down':
+            pos_prime[1] += 5
+            pos[1] -= 0.5               
+        elif direction == 'right':
+            pos_prime[0] += 5
+            pos[0] -= 0.5
+        elif direction == 'left':
+            pos_prime[0] -= 5
+            pos[0] += 0.5
+        cam.turn_on()
+        cam.position = (pos_prime[0], pos_prime[1])
+        cam.position = (pos[0], pos[1])
+        cam.turn_off()
+        
+        # send command status update via property update
+        props = {
+            'Nudge': {
+                'value': {
+                    'status': f'Command {request.name} completed at {datetime.datetime.now()}.',
+                    'position': {
+                        'base': cam.position[0],
+                        'elevation': cam.position[1]
+                    }
+                }
+            }
+        }
+        await device_client.patch_twin_reported_properties(props)
+        await device_client.patch_twin_reported_properties({
+            'position': {
+                'base': cam.position[0],
+                'elevation': cam.position[1]
+            }
+        })

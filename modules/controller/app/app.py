@@ -24,13 +24,18 @@ import sys
 import asyncio
 import datetime
 import json
-from typing import Dict
+import logging
 
+from jsonmerge import merge
+from typing import Dict, List
 from azure.iot.device.aio import IoTHubModuleClient
 from azure.iot.device import MethodRequest
 from cam import Cam
 from controller import software_reset
 from command import CommandProcessor
+
+logging.basicConfig(level=logging.INFO)
+logging.getLogger("azure.iot.device").setLevel(logging.WARNING)
 
 async def main():
 
@@ -44,12 +49,15 @@ async def main():
         last_action = datetime.datetime.now()
 
     async def command_handler(request: MethodRequest):
+        nonlocal last_action
         # Define behavior for handling commands
         try:
             if (module_client is not None):
                 if debug: print(f'{datetime.datetime.now()}: [INFO] Received command request from IoT Central: {request.name}, {request.payload}')
                 if request.name in CommandProcessor.Commands():
+                    last_action = datetime.datetime.now()
                     await CommandProcessor.Commands()[request.name](module_client, request)
+                    await send_telemetry()
                 else:
                     raise ValueError('Unknown command', request.name)
         except Exception as e:
@@ -58,20 +66,26 @@ async def main():
     async def get_twin():
         twin = await module_client.get_twin()
         print(f'{datetime.datetime.now()}: [INFO] Received module twin from IoTC: {twin}')
-        twin_update_handler(twin['desired'])
+        await twin_update_handler(twin['desired'])
 
     async def powerdown_watcher():
-        if (datetime.datetime.now() - last_action).seconds > powerdown: 
-            for name in Cam.get_names():
-                cam:Cam = Cam.get(name)
-                cam.turn_off()
-        await asyncio.sleep(1)
+        while True:
+            if (datetime.datetime.now() - last_action).seconds > powerdown: 
+                for name in Cam.get_names():
+                    cam:Cam = Cam.get(name)
+                    cam.turn_off()
+            await asyncio.sleep(1)
 
     async def send_telemetry():
         # Define behavior for sending telemetry
         while True:
             try:
-                telemetry = {}
+                names:List[str] = Cam.get_names()
+                cam:Cam = Cam.get(names[0])
+                telemetry = {
+                    'base': cam.position[0],
+                    'elevation': cam.position[1]
+                }
                 payload = json.dumps(telemetry)
                 if debug: print(f'{datetime.datetime.now()}: [INFO] Device telemetry: {payload}')
                 await module_client.send_message(payload)  
@@ -80,15 +94,34 @@ async def main():
             finally:
                 await asyncio.sleep(sampleRateInSeconds)       
 
-    def twin_update_handler(patch):
-        nonlocal debug, sampleRateInSeconds, powerdown, env
+    async def twin_update_handler(patch):
+        nonlocal debug, sampleRateInSeconds, powerdown, env, last_action
+        last_action = datetime.datetime.now()
         if debug: print(f'{datetime.datetime.now()}: [INFO] Received twin update from IoT Central: {patch}')
         if 'period' in patch: sampleRateInSeconds = patch['period']
         if 'debug' in patch: debug = patch['debug']
         if 'powerdown' in patch: powerdown = patch['powerdown']
         if 'environment' in patch: 
-            env = patch['environment']
-            boot_environment(env)
+            env = merge(env, patch['environment'])
+            boot_environment(env, True if 'started' not in env else False)
+            env['started'] = True
+        if 'position' in patch:
+            position = patch['position']
+            names:List[str] = Cam.get_names()
+            cam:Cam = Cam.get(names[0])
+            if env['started']:
+                x = cam.position[0] if 'base' not in position else position['base']
+                y = cam.position[1] if 'elevation' not in position else position['elevation']
+                cam.turn_on()
+                cam.position = (x, y)
+                cam.turn_off()
+                if (module_client is not None):
+                    await module_client.patch_twin_reported_properties({
+                        'position': {
+                            'base': cam.position[0],
+                            'elevation': cam.position[1]
+                        }
+                    })    
 
     try:
         if not sys.version >= "3.5.3":
@@ -108,7 +141,6 @@ async def main():
         module_client.on_twin_desired_properties_patch_received = twin_update_handler
         await module_client.connect()
         await get_twin()
-        boot_environment(env, True)
 
         # start send telemetry and receive commands
         await asyncio.gather(
