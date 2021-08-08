@@ -20,9 +20,8 @@
 # THE SOFTWARE.
 #
 import asyncio
-import json
 import datetime
-import requests
+import logging
 import datetime
 
 from azure.iot.device.aio import IoTHubModuleClient
@@ -30,6 +29,8 @@ from azure.iot.device import MethodResponse
 from azure.iot.device import MethodRequest
 
 class CommandProcessor:
+
+    logger = logging.getLogger("htxi.module.device")
 
     @staticmethod
     def Commands(): 
@@ -40,7 +41,7 @@ class CommandProcessor:
 
     @staticmethod
     async def reboot_device(device_client:IoTHubModuleClient, request:MethodRequest):
-        print(f'{datetime.datetime.now()}: Rebooting host')
+        CommandProcessor.logger.info(f'{datetime.datetime.now()}: Rebooting host')
         countdown = request.payload.get("countdown",0)
         reason = request.payload.get("reason", "No reason provided")
         response = MethodResponse.create_from_method_request(
@@ -48,7 +49,7 @@ class CommandProcessor:
         )
         await device_client.send_method_response(response)             # immidiatly send acknowledgement of asynchronous command
         await asyncio.sleep(countdown)
-        with open("/proc/sysrq-trigger", "a") as fo:                                # open sysrq-trigger file mounted into container via -v
+        with open("/proc/sysrq-trigger", "a") as fo:                   # open sysrq-trigger file mounted into container via -v
             await device_client.patch_twin_reported_properties(        # send command status update via property update now sine we won't be able later
             {
                 'RebootDevice': {
@@ -62,7 +63,7 @@ class CommandProcessor:
 
     @staticmethod
     async def shutdown_device(device_client:IoTHubModuleClient, request:MethodRequest):
-        print(f'{datetime.datetime.now()}: Shutting down host')
+        CommandProcessor.logger.info(f'{datetime.datetime.now()}: Shutting down host')
         countdown = request.payload.get("countdown",0)
         reason = request.payload.get("reason", "No reason provided")
         response = MethodResponse.create_from_method_request(
@@ -70,7 +71,7 @@ class CommandProcessor:
         )
         await device_client.send_method_response(response)             # immidiatly send acknowledgement of asynchronous command
         await asyncio.sleep(countdown)    
-        with open("/proc/sysrq-trigger", "a") as fo:                                # open sysrq-trigger file mounted into container via -v
+        with open("/proc/sysrq-trigger", "a") as fo:                   # open sysrq-trigger file mounted into container via -v
             await device_client.patch_twin_reported_properties(        # send command status update via property update now sine we won't be able later
             {
                 'RebootDevice': {

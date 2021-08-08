@@ -113,7 +113,8 @@
     },
     "device": {
       "properties.desired": {
-        "debug": true,
+        "logging_level": "INFO",
+        "az_logging_level": "WARNING",
         "period": 10
       }
     },
@@ -179,7 +180,8 @@
             }
           }
         },
-        "debug": true,
+        "logging_level": "INFO",
+        "az_logging_level": "WARNING",
         "period": 10,
         "powerdown": 30,
         "position": {

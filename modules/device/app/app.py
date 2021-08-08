@@ -24,11 +24,14 @@ import sys
 import asyncio
 import datetime
 import json
+import logging
 
 from azure.iot.device.aio import IoTHubModuleClient
 from azure.iot.device import MethodRequest
 from device import Device
 from command import CommandProcessor
+
+logging.basicConfig(level=logging.DEBUG)
 
 async def main():
 
@@ -36,17 +39,17 @@ async def main():
         # Define behavior for handling commands
         try:
             if (module_client is not None):
-                if debug: print(f'{datetime.datetime.now()}: [INFO] Received command request from IoT Central: {request.name}, {request.payload}')
+                logger.info(f'{datetime.datetime.now()}: Received command request from IoT Central: {request.name}, {request.payload}')
                 if request.name in CommandProcessor.Commands():
                     await CommandProcessor.Commands()[request.name](module_client, request)
                 else:
                     raise ValueError('Unknown command', request.name)
         except Exception as e:
-            print(f"{datetime.datetime.now()}: [ERROR] Exception during command listener: {e}")
+            logger.error(f"{datetime.datetime.now()}: Exception during command listener: {e}")
 
     async def get_twin():
         twin = await module_client.get_twin()
-        print(f'{datetime.datetime.now()}: [INFO] Received module twin from IoTC: {twin}')
+        logger.info(f'{datetime.datetime.now()}: Received module twin from IoTC: {twin}')
         twin_update_handler(twin['desired'])
 
     async def send_telemetry():
@@ -55,30 +58,38 @@ async def main():
             try:
                 telemetry = device.Telemetry
                 payload = json.dumps(telemetry)
-                if debug: print(f'{datetime.datetime.now()}: [INFO] Device telemetry: {payload}')
+                logger.info(f'{datetime.datetime.now()}: Device telemetry: {payload}')
                 await module_client.send_message(payload)  
             except Exception as e:
-                print(f'{datetime.datetime.now()}: [ERROR] Exception during sending metrics: {e}')
+                logger.error(f'{datetime.datetime.now()}: Exception during sending metrics: {e}')
             finally:
                 await asyncio.sleep(sampleRateInSeconds)       
 
     def twin_update_handler(patch):
         nonlocal debug, sampleRateInSeconds
-        if debug: print(f'{datetime.datetime.now()}: [INFO] Received twin update from IoT Central: {patch}')
+        logger.info(f'{datetime.datetime.now()}: Received twin update from IoT Central: {patch}')
         if 'period' in patch: sampleRateInSeconds = patch['period']
-        if 'debug' in patch: debug = patch['debug']
+        if 'az_logging_level' in patch: logging.getLogger("azure.iot.device").setLevel(patch['az_logging_level'])
+        if 'logging_level' in patch: 
+            logging.root.setLevel(patch['logging_level'])
+            logger.setLevel(patch['logging_level'])
 
     async def report_properties():
         propertiesToUpdate = device.Info
-        if debug: print(f'{datetime.datetime.now()}: [INFO] Device properties sent to IoT Central: {propertiesToUpdate}')
+        logger.info(f'{datetime.datetime.now()}: Device properties sent to IoT Central: {propertiesToUpdate}')
         await module_client.patch_twin_reported_properties(propertiesToUpdate)
-        if debug: print(f'{datetime.datetime.now()}: [INFO] Device properties updated.') 
+        logger.info(f'{datetime.datetime.now()}: Device properties updated.') 
 
     try:
+        logging.root.setLevel(logging.INFO)
+        logging.getLogger("azure.iot.device").setLevel(logging.WARNING)
+        logger = logging.getLogger("htxi.module.device")
+        logger.setLevel(logging.INFO)
+
         if not sys.version >= "3.5.3":
-            print(f'{datetime.datetime.now()}:[ERROR] This module requires python 3.5.3+. Current version of Python: {sys.version}.')
+            logger.error(f'{datetime.datetime.now()}: This module requires python 3.5.3+. Current version of Python: {sys.version}.')
             raise Exception( 'This module requires python 3.5.3+. Current version of Python: %s' % sys.version )
-        print(f'{datetime.datetime.now()}: [INFO] IoT Hub Client for Python')
+        logger.info(f'{datetime.datetime.now()}: IoT Hub Client for Python')
 
         sampleRateInSeconds = 10        # can be updated through the module twin in IoTC
         debug = True                    # can be updated through the module twin in IoTC
@@ -98,7 +109,7 @@ async def main():
         )     
 
     except Exception as e:
-        print(f'{datetime.datetime.now()}: [ERROR] Unexpected error {e}')
+        logger.error(f'{datetime.datetime.now()}: Unexpected error {e}')
         raise
     finally:
         await module_client.disconnect()

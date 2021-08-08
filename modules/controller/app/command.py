@@ -22,6 +22,7 @@
 import asyncio
 import datetime
 import datetime
+import logging
 
 from typing import List
 from azure.iot.device.aio import IoTHubModuleClient
@@ -31,6 +32,8 @@ from cam import Cam
 
 class CommandProcessor:
 
+    logger = logging.getLogger("htxi.module.controller")
+    
     @staticmethod
     def Commands(): 
         return {
@@ -44,7 +47,7 @@ class CommandProcessor:
 
     @staticmethod
     async def test(device_client:IoTHubModuleClient, request:MethodRequest):
-        print(f'{datetime.datetime.now()}: [INFO] Initiating test run')
+        CommandProcessor.logger.info(f'{datetime.datetime.now()}: Initiating test run')
         countdown = request.payload.get("countdown", 0)
         response = MethodResponse.create_from_method_request(
             request, status = 202
@@ -70,7 +73,7 @@ class CommandProcessor:
 
     @staticmethod
     async def pan_or_tilt(device_client:IoTHubModuleClient, request:MethodRequest):
-        print(f'{datetime.datetime.now()}: Initiating {request.name}')
+        CommandProcessor.logger.info(f'{datetime.datetime.now()}: Initiating {request.name}')
         angle = request.payload.get("angle", 0)
         response = MethodResponse.create_from_method_request(
             request, status = 202
@@ -91,7 +94,7 @@ class CommandProcessor:
             cam.tilt_to(angle)
             props = {'TiltTo': {}}
         else:
-            print(f'{datetime.datetime.now()}: [ERROR] Unknown method: {request.name}')
+            CommandProcessor.logger.error(f'{datetime.datetime.now()}: Unknown method: {request.name}')
             return
         
         # send command status update via property update
@@ -114,7 +117,7 @@ class CommandProcessor:
 
     @staticmethod 
     async def nudge(device_client:IoTHubModuleClient, request:MethodRequest):
-        print(f'{datetime.datetime.now()}: Initiating {request.name}')
+        CommandProcessor.logger.info(f'{datetime.datetime.now()}: Initiating {request.name}')
         direction = request.payload.get("direction", "")
         response = MethodResponse.create_from_method_request(
             request, status = 202

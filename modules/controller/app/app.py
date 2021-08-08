@@ -34,8 +34,7 @@ from cam import Cam
 from controller import software_reset
 from command import CommandProcessor
 
-logging.basicConfig(level=logging.INFO)
-logging.getLogger("azure.iot.device").setLevel(logging.WARNING)
+logging.basicConfig(level=logging.DEBUG)
 
 async def main():
 
@@ -53,7 +52,7 @@ async def main():
         # Define behavior for handling commands
         try:
             if (module_client is not None):
-                if debug: print(f'{datetime.datetime.now()}: [INFO] Received command request from IoT Central: {request.name}, {request.payload}')
+                logger.info(f'{datetime.datetime.now()}: Received command request from IoT Central: {request.name}, {request.payload}')
                 if request.name in CommandProcessor.Commands():
                     last_action = datetime.datetime.now()
                     await CommandProcessor.Commands()[request.name](module_client, request)
@@ -61,11 +60,11 @@ async def main():
                 else:
                     raise ValueError('Unknown command', request.name)
         except Exception as e:
-            print(f"{datetime.datetime.now()}: [ERROR] Exception during command listener: {e}")
+            logger.error(f"{datetime.datetime.now()}: Exception during command listener: {e}")
 
     async def get_twin():
         twin = await module_client.get_twin()
-        print(f'{datetime.datetime.now()}: [INFO] Received module twin from IoTC: {twin}')
+        logger.info(f'{datetime.datetime.now()}: Received module twin from IoTC: {twin}')
         await twin_update_handler(twin['desired'])
 
     async def powerdown_watcher():
@@ -74,6 +73,7 @@ async def main():
                 for name in Cam.get_names():
                     cam:Cam = Cam.get(name)
                     cam.turn_off()
+                    logger.info(f'{datetime.datetime.now()}: Device channels powered down')
             await asyncio.sleep(1)
 
     async def send_telemetry():
@@ -87,19 +87,22 @@ async def main():
                     'elevation': cam.position[1]
                 }
                 payload = json.dumps(telemetry)
-                if debug: print(f'{datetime.datetime.now()}: [INFO] Device telemetry: {payload}')
+                logger.info(f'{datetime.datetime.now()}: Device telemetry: {payload}')
                 await module_client.send_message(payload)  
             except Exception as e:
-                print(f'{datetime.datetime.now()}: [ERROR] Exception during sending metrics: {e}')
+                logger.error(f'{datetime.datetime.now()}: Exception during sending metrics: {e}')
             finally:
                 await asyncio.sleep(sampleRateInSeconds)       
 
     async def twin_update_handler(patch):
         nonlocal debug, sampleRateInSeconds, powerdown, env, last_action
         last_action = datetime.datetime.now()
-        if debug: print(f'{datetime.datetime.now()}: [INFO] Received twin update from IoT Central: {patch}')
+        logger.info(f'{datetime.datetime.now()}: Received twin update from IoT Central: {patch}')
         if 'period' in patch: sampleRateInSeconds = patch['period']
-        if 'debug' in patch: debug = patch['debug']
+        if 'logging_level' in patch: 
+            logging.root.setLevel(patch['logging_level'])
+            logger.setLevel(patch['logging_level'])
+        if 'az_logging_level' in patch: logging.getLogger("azure.iot.device").setLevel(patch['az_logging_level'])
         if 'powerdown' in patch: powerdown = patch['powerdown']
         if 'environment' in patch: 
             env = merge(env, patch['environment'])
@@ -124,10 +127,15 @@ async def main():
                     })    
 
     try:
+        logging.root.setLevel(logging.INFO)
+        logging.getLogger("azure.iot.device").setLevel(logging.WARNING)
+        logger = logging.getLogger("htxi.module.controller")
+        logger.setLevel(logging.INFO)
+        
         if not sys.version >= "3.5.3":
-            print(f'{datetime.datetime.now()}:[ERROR] This module requires python 3.5.3+. Current version of Python: {sys.version}.')
+            logger.error(f'{datetime.datetime.now()}: This module requires python 3.5.3+. Current version of Python: {sys.version}.')
             raise Exception( 'This module requires python 3.5.3+. Current version of Python: %s' % sys.version )
-        print(f'{datetime.datetime.now()}: [INFO] IoT Hub Client for Python')
+        logger.info(f'{datetime.datetime.now()}: IoT Hub Client for Python')
 
         powerdown = 60                  # can be updated through the module twin in IoTC
         sampleRateInSeconds = 10        # can be updated through the module twin in IoTC
@@ -155,7 +163,7 @@ async def main():
         software_reset()
 
     except Exception as e:
-        print(f'{datetime.datetime.now()}: [ERROR] Unexpected error {e}')
+        logger.error(f'{datetime.datetime.now()}: Unexpected error {e}')
         raise
     finally:
         await module_client.disconnect()
