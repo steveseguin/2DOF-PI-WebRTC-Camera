@@ -1,0 +1,21 @@
+{
+  "$schema-version": "0.0.1",
+  "description": "module to stream camera feed via WebRTC.",
+  "image": {
+    "repository": "innovationcontainerimages.azurecr.io/obs-cam",
+    "tag": {
+      "version": "streamer",
+      "platforms": {
+        "pi.full": "./Dockerfile",
+        "pi.extra": "./Dockerfile.extra",
+        "pi.core": "./Dockerfile.core",
+        "pi.deps": "./Dockerfile.deps",
+        "pi.base": "./Dockerfile.base",
+        "pi": "./Dockerfile.obs_cam"
+      }
+    },
+    "buildOptions": [],
+    "contextPath": "./"
+  },
+  "language": "python"
+}

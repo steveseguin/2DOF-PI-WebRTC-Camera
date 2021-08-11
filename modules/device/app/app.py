@@ -66,7 +66,7 @@ async def main():
                 await asyncio.sleep(sampleRateInSeconds)       
 
     def twin_update_handler(patch):
-        nonlocal debug, sampleRateInSeconds
+        nonlocal sampleRateInSeconds
         logger.info(f'{datetime.datetime.now()}: Received twin update from IoT Central: {patch}')
         if 'period' in patch: sampleRateInSeconds = patch['period']
         if 'az_logging_level' in patch: logging.getLogger("azure.iot.device").setLevel(patch['az_logging_level'])
@@ -92,7 +92,6 @@ async def main():
         logger.info(f'{datetime.datetime.now()}: IoT Hub Client for Python')
 
         sampleRateInSeconds = 10        # can be updated through the module twin in IoTC
-        debug = True                    # can be updated through the module twin in IoTC
         device = Device()
 
         # The client object is used to interact with your Azure IoT hub.

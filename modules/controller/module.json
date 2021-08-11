@@ -1,6 +1,6 @@
 {
   "$schema-version": "0.0.1",
-  "description": "",
+  "description": "module to control the pan and tile of the camera",
   "image": {
     "repository": "innovationcontainerimages.azurecr.io/obs-cam",
     "tag": {

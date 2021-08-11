@@ -7,3 +7,4 @@ WIDTH=1280
 HEIGHT=720
 FPS=10
 CAPS=video/x-raw,width={width},height={height},framerate={fps}/1
+USE_AZ_IOT=TRUE

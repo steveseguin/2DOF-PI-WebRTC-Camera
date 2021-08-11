@@ -38,6 +38,9 @@ class Device():
         self.__get_public_ip()
         self.__get_latlong()
         self.__get_device_properties()
+        self.__cpu_load_cache = [0,0]
+        _ = self.CPU_load
+            # Warm up CPU load so the first telemetry value will be correct
         
     def __get_public_ip(self):
         #
@@ -109,6 +112,44 @@ class Device():
         return f"up{s}"
 
     @property
+    def CPU_load(self) -> float:
+        # Read first line from /proc/stat. It should start with "cpu"
+        # and contains times spend in various modes by all CPU's totalled.
+        #
+        with open("/proc/stat") as procfile: cpustats = procfile.readline().split()
+
+        # Sanity check
+        if cpustats[0] != 'cpu': raise ValueError("First line of /proc/stat not recognised")
+
+        # Refer to "man 5 proc" (search for /proc/stat) for information
+        # about which field means what.
+        #
+        # Here we do calculation as simple as possible:
+        #
+        # CPU% = 100 * time-doing-things / (time_doing_things + time_doing_nothing)
+        #
+        user_time = int(cpustats[1])    # time spent in user space
+        nice_time = int(cpustats[2])    # 'nice' time spent in user space
+        system_time = int(cpustats[3])  # time spent in kernel space
+
+        idle_time = int(cpustats[4])    # time spent idly
+        iowait_time = int(cpustats[5])  # time spent waiting is also doing nothing
+
+        time_doing_things = user_time + nice_time + system_time
+        time_doing_nothing = idle_time + iowait_time
+
+        if self.__cpu_load_cache[0] == 0 and self.__cpu_load_cache[1] == 0: val = 0.0
+        else:
+            d1 = time_doing_things - self.__cpu_load_cache[0]
+            d2 = time_doing_nothing - self.__cpu_load_cache[1]
+            val = 100.0 * d1 / (d1 + d2 )
+
+        self.__cpu_load_cache[0] = time_doing_things
+        self.__cpu_load_cache[1] = time_doing_nothing
+        return val
+
+
+    @property
     def Info(self):
         #
         # Generates property json for update of hardware properties to IoT Central
@@ -144,14 +185,13 @@ class Device():
         #
         t = psutil.sensors_temperatures()
         m = psutil.virtual_memory()
-        c = psutil.getloadavg()
         d = psutil.disk_usage('/')
         up = self.__get_uptime_string()
         payload = {
             'currentTemp': t['cpu_thermal'][0].current,
             'memFree': round(m.available/1000000000, 3),
             'memUsage': m.percent,
-            'cpuLoading': c[0]*100/self.__cores,
+            'cpuLoading': self.CPU_load,
             'cpuClock': int(psutil.cpu_freq().current),
             'diskFree': round(psutil.disk_usage('/').free/1000000000, 3),
             'diskUsage': round(psutil.disk_usage('/').percent, 3),

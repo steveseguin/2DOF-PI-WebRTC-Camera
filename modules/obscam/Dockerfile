@@ -190,7 +190,8 @@ RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && sudo ldconfig \
     && rm -rf /usr/local/src/libnice
 
-RUN python3 -m pip install websockets
+COPY requirements.txt ./
+RUN python3 -m pip install websockets &&  python3 -m pip install -r requirements.txt 
 
 RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && export LD_LIBRARY_PATH=/usr/local/lib/:/usr/lib \
@@ -212,7 +213,7 @@ ADD app /app
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
-CMD ["python3","server.py"]
+CMD ["python3","app.py"]
 
 # Build time is about 90 min
 # docker buildx build --platform linux/arm/v7 --pull --rm -f "Dockerfile" -t obs-cam:pi "."

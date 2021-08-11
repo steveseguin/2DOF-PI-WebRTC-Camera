@@ -1,4 +1,4 @@
-FROM obs-cam:pi.core
+FROM innovationcontainerimages.azurecr.io/obs-cam:streamer-pi.core
 
 RUN export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0 \
     && export LD_LIBRARY_PATH=/usr/local/lib/:/usr/lib \

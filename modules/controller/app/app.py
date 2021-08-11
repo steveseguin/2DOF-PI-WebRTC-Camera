@@ -95,7 +95,7 @@ async def main():
                 await asyncio.sleep(sampleRateInSeconds)       
 
     async def twin_update_handler(patch):
-        nonlocal debug, sampleRateInSeconds, powerdown, env, last_action
+        nonlocal sampleRateInSeconds, powerdown, env, last_action
         last_action = datetime.datetime.now()
         logger.info(f'{datetime.datetime.now()}: Received twin update from IoT Central: {patch}')
         if 'period' in patch: sampleRateInSeconds = patch['period']
@@ -139,7 +139,6 @@ async def main():
 
         powerdown = 60                  # can be updated through the module twin in IoTC
         sampleRateInSeconds = 10        # can be updated through the module twin in IoTC
-        debug = True                    # can be updated through the module twin in IoTC
         env = {}                        # cam environment definition. can be updated through the module twin in IoTC
         last_action = datetime.datetime.now()
 

@@ -42,7 +42,7 @@
             "status": "running",
             "restartPolicy": "always",
             "settings": {
-              "image": "innovationcontainerimages.azurecr.io/device:pi",
+              "image": "innovationcontainerimages.azurecr.io/device:pi-arm32v7",
               "createOptions": "{\"NetworkingConfig\":{\"EndpointsConfig\": {\"host\": {}}},HostConfig:{\"Privileged\": true,\"NetworkMode\": \"host\",\"LogConfig\": {\"Type\": \"json-file\",\"Config\": {\"max-file\": \"5\",\"max-size\": \"10m\"}}}}"
             },
             "env": {}
@@ -53,36 +53,12 @@
             "status": "running",
             "restartPolicy": "always",
             "settings": {
-              "image": "innovationcontainerimages.azurecr.io/obs-cam:pi",
-              "createOptions": "{\"NetworkingConfig\":{\"EndpointsConfig\": {\"host\": {}}},HostConfig:{\"Privileged\": true,\"NetworkMode\": \"host\",\"LogConfig\": {\"Type\": \"json-file\",\"Config\": {\"max-file\": \"5\",\"max-size\": \"10m\"}},\"Devices\": [{\"PathOnHost\": \"/dev/vchiq\",\"PathInContainer\": \"/dev/vchiq\",\"CgroupPermissions\": \"rwm\"},{\"PathOnHost\": \"/dev/video0\",\"PathInContainer\": \"/dev/video0\",\"CgroupPermissions\": \"rwm\"}]}}"
+              "image": "innovationcontainerimages.azurecr.io/obs-cam:streamer-pi",
+              "createOptions": "{\"NetworkingConfig\":{\"EndpointsConfig\": {\"host\": {}}},HostConfig:{\"Privileged\": true,\"NetworkMode\": \"host\",\"LogConfig\": {\"Type\": \"json-file\",\"Config\": {\"max-file\": \"5\",\"max-size\": \"10m\"}},\"Devices\": [{\"PathOnHost\": \"/dev/vchiq\",\"PathInContainer\": \"/dev/vchiq\",\"CgroupPermissions\": \"rwm\"}]}}"
             },
             "env": {
-              "CAM_SOURCE": {
-                "value": "v4l2src"
-              },
-              "CAM_SOURCE_PARAMS": {
-                "value": "device=/dev/video0"
-              },
-              "CUSTOM_PIPELINE": {
-                "value": "videoflip method=vertical-flip !"
-              },
-              "STREAM_ID": {
-                "value": "htxi-robot"
-              },
-              "SERVER": {
-                "value": "wss://apibackup.obs.ninja:443"
-              },
-              "WIDTH": {
-                "value": "1280"
-              },
-              "HEIGHT": {
-                "value": "720"
-              },
-              "FPS": {
-                "value": "10"
-              },
-              "CAPS": {
-                "value": "video/x-raw,width={width},height={height},framerate={fps}/1"
+              "USE_AZ_IOT": {
+                "value": "TRUE"
               }
             }
           },
@@ -119,7 +95,22 @@
       }
     },
     "camera": {
-      "properties.desired": {}
+      "properties.desired": {
+        "logging_level": "INFO",
+        "az_logging_level": "WARNING",
+        "period": 10,
+        "settings": {
+          "stream_id": "htxi-robot",
+          "server": "wss://apibackup.obs.ninja:443",
+          "cam_source":"v4l2src",
+          "cam_source_params": "device=/dev/video0",
+          "custom_pipeline": "videoflip method=vertical-flip !",
+          "fps": 10,
+          "width": 1280,
+          "height": 720,
+          "caps": "video/x-raw,width={width},height={height},framerate={fps}/1"
+        }        
+      }
     },
     "controller": {
       "properties.desired": {

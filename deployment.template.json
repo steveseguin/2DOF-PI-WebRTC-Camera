@@ -61,14 +61,43 @@
               "createOptions": {}
             }
           },
-          "SimulatedTemperatureSensor": {
+          "camera": {
             "version": "1.0",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
             "settings": {
-              "image": "mcr.microsoft.com/azureiotedge-simulated-temperature-sensor:1.0",
-              "createOptions": {}
+              "image": "innovationcontainerimages.azurecr.io/obs-cam:pi",
+              "createOptions": "{\"NetworkingConfig\":{\"EndpointsConfig\": {\"host\": {}}},HostConfig:{\"Privileged\": true,\"NetworkMode\": \"host\",\"LogConfig\": {\"Type\": \"json-file\",\"Config\": {\"max-file\": \"5\",\"max-size\": \"10m\"}},\"Devices\": [{\"PathOnHost\": \"/dev/vchiq\",\"PathInContainer\": \"/dev/vchiq\",\"CgroupPermissions\": \"rwm\"},{\"PathOnHost\": \"/dev/video0\",\"PathInContainer\": \"/dev/video0\",\"CgroupPermissions\": \"rwm\"}]}}"
+            },
+            "env": {
+              "CAM_SOURCE": {
+                "value": "v4l2src"
+              },
+              "CAM_SOURCE_PARAMS": {
+                "value": "device=/dev/video0"
+              },
+              "CUSTOM_PIPELINE": {
+                "value": "videoflip method=vertical-flip !"
+              },
+              "STREAM_ID": {
+                "value": "htxi-robot"
+              },
+              "SERVER": {
+                "value": "wss://apibackup.obs.ninja:443"
+              },
+              "WIDTH": {
+                "value": "1280"
+              },
+              "HEIGHT": {
+                "value": "720"
+              },
+              "FPS": {
+                "value": "10"
+              },
+              "CAPS": {
+                "value": "video/x-raw,width={width},height={height},framerate={fps}/1"
+              }
             }
           },
           "Controller": {
