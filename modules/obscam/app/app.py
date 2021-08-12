@@ -42,7 +42,7 @@ from gi.repository import Gst, GstSdp, GstWebRTC
 
 logging.basicConfig(level=logging.DEBUG)
 logging.root.setLevel(logging.INFO)
-logger = logging.getLogger("htxi.module.camera")
+logger = logging.getLogger("htxi.modules.camera")
 logger.setLevel(logging.INFO)
 
 test_video_pipeline = '''
@@ -83,11 +83,40 @@ async def main(settings:SimpleNamespace):
         logger.info(f'{datetime.datetime.now()}: Received module twin from IoTC: {twin}')
         await twin_update_handler(twin['desired'])
 
+    async def report_properties():
+        propertiesToUpdate = {
+            'stream_url': f'https://backup.obs.ninja/?password=false&view={settings.stream_id}'
+        }
+        logger.info(f'{datetime.datetime.now()}: Device properties sent to IoT Central: {propertiesToUpdate}')
+        await module_client.patch_twin_reported_properties(propertiesToUpdate)
+        logger.info(f'{datetime.datetime.now()}: Device properties updated.') 
+
+    async def restart_webrtc_client():
+        nonlocal webrtc_task
+        if webrtc_task is not None:
+            webrtc_task.cancel()
+            while not webrtc_task.done():
+                await asyncio.sleep(1)
+            logger.info(f'{datetime.datetime.now()}: Running webrtc task cancelled. Respawn.')
+            webrtc_task = asyncio.create_task(webrtc_client.loop())
+
+    def build_gst_pipeline() -> bool:
+        if settings.cam_source == 'test': settings.gst_pipeline = test_video_pipeline.format(custom=settings.custom_pipeline)
+        elif settings.cam_source == 'rpi_cam': settings.gst_pipeline = rpi_cam_pipeline.format(custom=settings.custom_pipeline, width=settings.width, height=settings.height, fps=settings.fps)
+        elif settings.cam_source == 'v4l2src': 
+            settings.gst_pipeline = v4l_pipeline.format(caps=settings.caps, source_params=settings.cam_source_params, custom=settings.custom_pipeline)
+            settings.gst_pipeline = settings.gst_pipeline.format(width=settings.width, height=settings.height, fps=settings.fps)
+        else:
+            return False
+        return True
+
     async def send_telemetry():
         # Define behavior for sending telemetry
         while True:
             try:
-                telemetry = {}
+                telemetry = {
+                    "connected_clients": webrtc_client.Clients
+                }
                 payload = json.dumps(telemetry)
                 logger.info(f'{datetime.datetime.now()}: Device telemetry: {payload}')
                 await module_client.send_message(payload)  
@@ -103,21 +132,23 @@ async def main(settings:SimpleNamespace):
         if 'az_logging_level' in patch: logging.getLogger("azure.iot.device").setLevel(patch['az_logging_level'])
         if 'settings' in patch: 
             settings = SimpleNamespace(** merge(settings.__dict__, patch['settings']))
-            if 'stream_id' in patch['settings']:
-                await report_properties()
+            if webrtc_task is not None:
+                build_gst_pipeline()
+                if webrtc_client.Pipeline != settings.gst_pipeline: webrtc_client.Pipeline = settings.gst_pipeline
+                if 'stream_id' in patch['settings']: 
+                    await report_properties()
+                    webrtc_client.StreamId = settings.stream_id
+                if 'server' in patch: webrtc_client.Server = settings.server
+                logger.info(f"{datetime.datetime.now()}: Settings have changed, re-launching webrtc stream.")
+                main_loop.create_task(restart_webrtc_client())
         if 'logging_level' in patch: 
             logging.root.setLevel(patch['logging_level'])
             logger.setLevel(patch['logging_level'])
 
-    async def report_properties():
-        propertiesToUpdate = {
-            'stream_url': f'https://backup.obs.ninja/?password=false&view={settings.stream_id}'
-        }
-        logger.info(f'{datetime.datetime.now()}: Device properties sent to IoT Central: {propertiesToUpdate}')
-        await module_client.patch_twin_reported_properties(propertiesToUpdate)
-        logger.info(f'{datetime.datetime.now()}: Device properties updated.') 
-
-    module_client = None
+    main_loop = asyncio.get_running_loop()
+    module_client:IoTHubModuleClient = None
+    webrtc_client:WebRTCClient = None
+    webrtc_task = None
     try:        
         if not sys.version >= "3.5.3":
             logger.error(f'{datetime.datetime.now()}: This module requires python 3.5.3+. Current version of Python: {sys.version}.')
@@ -135,12 +166,7 @@ async def main(settings:SimpleNamespace):
             await module_client.connect()
             await get_twin()
 
-        if settings.cam_source == 'test': settings.gst_pipeline = test_video_pipeline.format(custom=settings.custom_pipeline)
-        elif settings.cam_source == 'rpi_cam': settings.gst_pipeline = rpi_cam_pipeline.format(custom=settings.custom_pipeline, width=settings.width, height=settings.height, fps=settings.fps)
-        elif settings.cam_source == 'v4l2src': 
-            settings.gst_pipeline = v4l_pipeline.format(caps=settings.caps, source_params=settings.cam_source_params, custom=settings.custom_pipeline)
-            settings.gst_pipeline = settings.gst_pipeline.format(width=settings.width, height=settings.height, fps=settings.fps)
-        else:
+        if not build_gst_pipeline():
             logger.error(f'{datetime.datetime.now()}: Invalid camera source: {settings.cam_source}. Use test|rpi_cam|v4l2src')
             sys.exit(1)
 
@@ -152,12 +178,11 @@ async def main(settings:SimpleNamespace):
         webrtc_client = WebRTCClient(pipeline=settings.gst_pipeline, peer_id=settings.stream_id, server=settings.server)
         await webrtc_client.connect()
 
-        # start send telemetry and receive commands
+        # start send telemetry and receive commands        
         if settings.useAZIoT:
-            await asyncio.gather(
-                send_telemetry(),
-                webrtc_client.loop()
-            )
+            webrtc_task = asyncio.create_task(webrtc_client.loop())
+            await report_properties()
+            await send_telemetry()
         else:
             await webrtc_client.loop()
 
