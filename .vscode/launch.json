@@ -74,6 +74,20 @@
       "windows": {
         "program": "${workspaceFolder}\\modules\\Controller\\main.py"
       }
+    },
+    {
+      "name": "Streamer Local Debug (Python)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/modules/obscam/app/app.py",
+      "console": "integratedTerminal",
+      "env": {
+        "EdgeHubConnectionString": "${config:azure-iot-edge.EdgeHubConnectionString}",
+        "EdgeModuleCACertificateFile": "${config:azure-iot-edge.EdgeModuleCACertificateFile}"
+      },
+      "windows": {
+        "program": "${workspaceFolder}\\modules\\obscam\\app\\app.py"
+      }
     }
   ]
 }

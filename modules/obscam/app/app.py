@@ -46,22 +46,21 @@ logger = logging.getLogger("htxi.modules.camera")
 logger.setLevel(logging.INFO)
 
 test_video_pipeline = '''
-webrtcbin name=sendrecv bundle-policy=max-bundle
- videotestsrc ! {custom}  videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
- queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
- audiotestsrc is-live=true wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
- queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! sendrecv.
+tee name=videotee ! queue ! fakesink
+videotestsrc ! {custom} videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay ! queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! videotee.
+tee name=audiotee ! queue ! fakesink
+audiotestsrc is-live=true wave=red-noise volume=0.2 ! queue ! opusenc ! rtpopuspay ! queue leaky=1 ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! audiotee.
 ''' # test source with video and audio.
 
 rpi_cam_pipeline = '''
-webrtcbin name=sendrecv bundle-policy=max-bundle
+tee name=videotee ! queue ! fakesink
 rpicamsrc bitrate=2000000 ! video/x-h264,profile=constrained-baseline,width={width},height={height},framerate={fps}/1,level=3.0 ! {custom}  queue ! h264parse ! rtph264pay config-interval=-1 !
-queue ! application/x-rtp,media=video,encoding-name=H264,payload=96 ! sendrecv.
+queue ! application/x-rtp,media=video,encoding-name=H264,payload=96 ! videotee.
 ''' # raspberry pi camera needed; audio source removed to perserve simplicity.
 
 v4l_pipeline = '''
-webrtcbin name=sendrecv bundle-policy=max-bundle 
-v4l2src {source_params} ! {caps} ! {custom} videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay ! queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
+tee name=videotee ! queue ! fakesink
+v4l2src {source_params} ! {caps} ! {custom} videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay ! queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! videotee.
 ''' # usb camera needed; audio source removed to perserve simplicity.
 
 async def main(settings:SimpleNamespace):
@@ -175,7 +174,7 @@ async def main(settings:SimpleNamespace):
             sys.exit(1)
 
         logger.info(f'{datetime.datetime.now()}: Booting up using settings: {settings}')
-        webrtc_client = WebRTCClient(pipeline=settings.gst_pipeline, peer_id=settings.stream_id, server=settings.server)
+        webrtc_client = WebRTCClient(pipeline=settings.gst_pipeline, stream_id=settings.stream_id, server=settings.server)
         await webrtc_client.connect()
 
         # start send telemetry and receive commands        
@@ -213,7 +212,7 @@ if __name__ == "__main__":
         'cam_source': os.environ.get('CAM_SOURCE', 'test'),
         'cam_source_params': os.environ.get('CAM_SOURCE_PARAMS', 'device=/dev/video0'),
         'custom_pipeline': os.environ.get('CUSTOM_PIPELINE', ''),
-        'fps': int(os.environ.get('FPS', '15')),
+        'fps': int(os.environ.get('FPS', '10')),
         'width': int(os.environ.get('WIDTH', '1280')),
         'height': int(os.environ.get('HEIGHT', '720')),
         'caps': os.environ.get('CAPS', 'video/x-raw,width={width},height={height},framerate={fps}/1'),
