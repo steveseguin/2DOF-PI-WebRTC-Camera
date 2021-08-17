@@ -98,7 +98,9 @@
       "properties.desired": {
         "logging_level": "INFO",
         "az_logging_level": "WARNING",
-        "period": 10,
+        "period": 60,
+        "max_clients": 5,
+        "monitoring_period": 60,
         "settings": {
           "stream_id": "htxi-robot",
           "server": "wss://apibackup.obs.ninja:443",
@@ -173,7 +175,7 @@
         },
         "logging_level": "INFO",
         "az_logging_level": "WARNING",
-        "period": 10,
+        "period": 30,
         "powerdown": 30,
         "position": {
           "base": 0,

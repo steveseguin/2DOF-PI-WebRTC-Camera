@@ -72,8 +72,9 @@ async def main():
             if (datetime.datetime.now() - last_action).seconds > powerdown: 
                 for name in Cam.get_names():
                     cam:Cam = Cam.get(name)
-                    cam.turn_off()
-                    logger.info(f'{datetime.datetime.now()}: Device channels powered down')
+                    if not cam._turnedOff:
+                        cam.turn_off()
+                        logger.info(f'{datetime.datetime.now()}: Device channels powered down for {name}')
             await asyncio.sleep(1)
 
     async def send_telemetry():

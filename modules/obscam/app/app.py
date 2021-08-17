@@ -33,6 +33,7 @@ from jsonmerge import merge
 from azure.iot.device.aio import IoTHubModuleClient
 from azure.iot.device import MethodRequest
 from types import SimpleNamespace
+from typing import Dict, List
 from server import WebRTCClient
 
 gi.require_version('Gst', '1.0')
@@ -64,6 +65,25 @@ v4l2src {source_params} ! {caps} ! {custom} videoconvert ! queue ! vp8enc deadli
 ''' # usb camera needed; audio source removed to perserve simplicity.
 
 async def main(settings:SimpleNamespace):
+    """
+    The main method handling the module functionality and optionally the IoTHub and IoTCentral connectivity.
+
+    :param settings     Settings dictionary. Passed as namespace to make access to the members easier
+    :type settings      SimpleNamespace. 
+    """
+
+    def build_gst_pipeline() -> bool:
+        """
+        Build the gst pipeline based ont he settings. 
+        """
+        if settings.cam_source == 'test': settings.gst_pipeline = test_video_pipeline.format(custom=settings.custom_pipeline)
+        elif settings.cam_source == 'rpi_cam': settings.gst_pipeline = rpi_cam_pipeline.format(custom=settings.custom_pipeline, width=settings.width, height=settings.height, fps=settings.fps)
+        elif settings.cam_source == 'v4l2src': 
+            settings.gst_pipeline = v4l_pipeline.format(caps=settings.caps, source_params=settings.cam_source_params, custom=settings.custom_pipeline)
+            settings.gst_pipeline = settings.gst_pipeline.format(width=settings.width, height=settings.height, fps=settings.fps)
+        else:
+            return False
+        return True
 
     async def command_handler(request: MethodRequest):
         # Define behavior for handling commands
@@ -78,43 +98,22 @@ async def main(settings:SimpleNamespace):
             logger.error(f"{datetime.datetime.now()}: Exception during command listener: {e}")
 
     async def get_twin():
+        """
+        Get the device twin from IoTCentral or IoTHub
+        """
         twin = await module_client.get_twin()
         logger.info(f'{datetime.datetime.now()}: Received module twin from IoTC: {twin}')
         await twin_update_handler(twin['desired'])
 
-    async def report_properties():
-        propertiesToUpdate = {
-            'stream_url': f'https://backup.obs.ninja/?password=false&view={settings.stream_id}'
-        }
-        logger.info(f'{datetime.datetime.now()}: Device properties sent to IoT Central: {propertiesToUpdate}')
-        await module_client.patch_twin_reported_properties(propertiesToUpdate)
-        logger.info(f'{datetime.datetime.now()}: Device properties updated.') 
-
-    async def restart_webrtc_client():
-        nonlocal webrtc_task
-        if webrtc_task is not None:
-            webrtc_task.cancel()
-            while not webrtc_task.done():
-                await asyncio.sleep(1)
-            logger.info(f'{datetime.datetime.now()}: Running webrtc task cancelled. Respawn.')
-            webrtc_task = asyncio.create_task(webrtc_client.loop())
-
-    def build_gst_pipeline() -> bool:
-        if settings.cam_source == 'test': settings.gst_pipeline = test_video_pipeline.format(custom=settings.custom_pipeline)
-        elif settings.cam_source == 'rpi_cam': settings.gst_pipeline = rpi_cam_pipeline.format(custom=settings.custom_pipeline, width=settings.width, height=settings.height, fps=settings.fps)
-        elif settings.cam_source == 'v4l2src': 
-            settings.gst_pipeline = v4l_pipeline.format(caps=settings.caps, source_params=settings.cam_source_params, custom=settings.custom_pipeline)
-            settings.gst_pipeline = settings.gst_pipeline.format(width=settings.width, height=settings.height, fps=settings.fps)
-        else:
-            return False
-        return True
-
     async def send_telemetry():
-        # Define behavior for sending telemetry
+        """
+        Continously send telemetry to IoTCentral/IoT Hub
+        """
         while True:
             try:
                 telemetry = {
-                    "connected_clients": webrtc_client.Clients
+                    "connected_clients": webrtc_client.Clients,
+                    "stream_url_t": f"https://backup.obs.ninja/?password=false&view={settings.stream_id}"
                 }
                 payload = json.dumps(telemetry)
                 logger.info(f'{datetime.datetime.now()}: Device telemetry: {payload}')
@@ -124,30 +123,45 @@ async def main(settings:SimpleNamespace):
             finally:
                 await asyncio.sleep(sampleRateInSeconds)       
 
-    async def twin_update_handler(patch):
+    async def twin_update_handler(patch:Dict[str, object]):
+        """
+        Handle Device Twin updates received from IoTCentral or IoT Hub.
+
+        :param path     The property patch
+        :type path      Dictionary
+        """
         nonlocal sampleRateInSeconds, settings
         logger.info(f'{datetime.datetime.now()}: Received twin update from IoT Central: {patch}')
         if 'period' in patch: sampleRateInSeconds = patch['period']
-        if 'az_logging_level' in patch: logging.getLogger("azure.iot.device").setLevel(patch['az_logging_level'])
+        if 'az_logging_level' in patch: logging.getLogger('azure.iot.device').setLevel(patch['az_logging_level'])
+        if 'max_clients' in patch: 
+            settings = SimpleNamespace(** merge(settings.__dict__, {'max_clients': patch['max_clients']}))
+            if webrtc_client is not None: webrtc_client.MaxClients = settings.max_clients
+        if 'monitoring_period' in patch:
+            settings = SimpleNamespace(** merge(settings.__dict__, {'monitoring_period': patch['monitoring_period']}))
+            if webrtc_client is not None: webrtc_client.ClientMonitoringPeriod = settings.monitoring_period
         if 'settings' in patch: 
             settings = SimpleNamespace(** merge(settings.__dict__, patch['settings']))
-            if webrtc_task is not None:
-                build_gst_pipeline()
-                if webrtc_client.Pipeline != settings.gst_pipeline: webrtc_client.Pipeline = settings.gst_pipeline
-                if 'stream_id' in patch['settings']: 
-                    await report_properties()
-                    webrtc_client.StreamId = settings.stream_id
-                if 'server' in patch: webrtc_client.Server = settings.server
-                logger.info(f"{datetime.datetime.now()}: Settings have changed, re-launching webrtc stream.")
-                main_loop.create_task(restart_webrtc_client())
+            build_gst_pipeline()
+            if webrtc_client is not None:
+                webrtc_client.Pipeline = settings.gst_pipeline
+                webrtc_client.StreamId = settings.stream_id      
+                webrtc_client.Server = settings.server
         if 'logging_level' in patch: 
             logging.root.setLevel(patch['logging_level'])
             logger.setLevel(patch['logging_level'])
+        #
+        # Send a property update back to IoTC to confirm the new property settings, if this is not done, the properties will only 
+        # be considered desired, not reports and therefore not show up in Dashboard, etc. 
+        #
+        del patch['$version']
+        patch['stream_url'] = f'https://backup.obs.ninja/?password=false&view={settings.stream_id}'
+        await module_client.patch_twin_reported_properties(patch)
+        logger.info(f'{datetime.datetime.now()}: Desired properties confirmed to reported properties.') 
 
     main_loop = asyncio.get_running_loop()
     module_client:IoTHubModuleClient = None
     webrtc_client:WebRTCClient = None
-    webrtc_task = None
     try:        
         if not sys.version >= "3.5.3":
             logger.error(f'{datetime.datetime.now()}: This module requires python 3.5.3+. Current version of Python: {sys.version}.')
@@ -175,15 +189,15 @@ async def main(settings:SimpleNamespace):
 
         logger.info(f'{datetime.datetime.now()}: Booting up using settings: {settings}')
         webrtc_client = WebRTCClient(pipeline=settings.gst_pipeline, stream_id=settings.stream_id, server=settings.server)
+        webrtc_client.MaxClients = settings.max_clients
+        webrtc_client.ClientMonitoringPeriod = settings.monitoring_period
         await webrtc_client.connect()
 
         # start send telemetry and receive commands        
-        if settings.useAZIoT:
-            webrtc_task = asyncio.create_task(webrtc_client.loop())
-            await report_properties()
-            await send_telemetry()
-        else:
-            await webrtc_client.loop()
+        if settings.useAZIoT: 
+            asyncio.create_task(send_telemetry())
+
+        await webrtc_client.loop()
 
     except asyncio.CancelledError:
         logger.info(f'{datetime.datetime.now()}: Main task was cancelled. Cleaning up.')
@@ -217,7 +231,9 @@ if __name__ == "__main__":
         'height': int(os.environ.get('HEIGHT', '720')),
         'caps': os.environ.get('CAPS', 'video/x-raw,width={width},height={height},framerate={fps}/1'),
         'useAZIoT': True if os.environ.get('USE_AZ_IOT', 'FALSE') == 'TRUE' else False,
-        'gst_pipeline': ''        
+        'gst_pipeline': '',
+        'max_clients': 5,
+        'monitoring_period': 60        
     })
 
     parser = argparse.ArgumentParser()

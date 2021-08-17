@@ -115,14 +115,14 @@
                 "fields": [
                   {
                     "displayName": {
-                      "en": "base"
+                      "en": "Base Angle"
                     },
                     "name": "base",
                     "schema": "double"
                   },
                   {
                     "displayName": {
-                      "en": "elevation"
+                      "en": "Elevation"
                     },
                     "name": "elevation",
                     "schema": "double"

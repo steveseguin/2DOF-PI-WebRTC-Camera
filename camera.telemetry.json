@@ -1,0 +1,100 @@
+{
+  "@id": "dtmi:HTXI:CameraTelemetry;1",
+  "@type": "Interface",
+  "contents": [
+    {
+      "@type": "Telemetry",
+      "displayName": {
+        "en": "Connected Clients"
+      },
+      "name": "connected_clients",
+      "schema": "integer"
+    },
+    {
+      "@type": "Property",
+      "description": {
+        "en": "The address where the video stream can be accessed."
+      },
+      "displayName": {
+        "en": "Stream Url"
+      },
+      "name": "stream_url",
+      "schema": "string",
+      "writable": false
+    },
+    {
+      "@type": "Telemetry",
+      "displayName": {
+        "en": "Stream Url"
+      },
+      "name": "stream_url_t",
+      "schema": "string"
+    },
+    {
+      "@type": "Command",
+      "commandType": "synchronous",
+      "displayName": {
+        "en": "Take Picture"
+      },
+      "name": "take_picture",
+      "request": {
+        "@type": "CommandPayload",
+        "displayName": {
+          "en": "request"
+        },
+        "name": "request",
+        "schema": {
+          "@type": "Object",
+          "displayName": {
+            "en": "Object"
+          },
+          "fields": [
+            {
+              "displayName": {
+                "en": "countdown"
+              },
+              "name": "countdown",
+              "schema": "integer"
+            }
+          ]
+        }
+      },
+      "response": {
+        "@type": "CommandPayload",
+        "displayName": {
+          "en": "response"
+        },
+        "name": "response",
+        "schema": {
+          "@type": "Object",
+          "displayName": {
+            "en": "Object"
+          },
+          "fields": [
+            {
+              "displayName": {
+                "en": "Picture Url"
+              },
+              "name": "picture_url",
+              "schema": "string"
+            },
+            {
+              "displayName": {
+                "en": "status"
+              },
+              "name": "status",
+              "schema": "string"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "displayName": {
+    "en": "camera telemetry"
+  },
+  "@context": [
+    "dtmi:iotcentral:context;2",
+    "dtmi:dtdl:context;2"
+  ]
+}
