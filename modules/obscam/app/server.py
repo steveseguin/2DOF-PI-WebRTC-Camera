@@ -178,7 +178,7 @@ class WebRTCClient:
         Sets the signalling server. This will require a reconned and all clients will be dropped from the pipeline. However, the 
         pipeline itself will not restart. 
         '''
-        if server != self.__server or True:
+        if server != self.__server:
             self.__logger.info(f"{datetime.datetime.now()}: Server property has changed... restarting stream.")
             self.__server = server
             self.__remove_all_clients()
