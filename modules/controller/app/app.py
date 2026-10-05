@@ -56,9 +56,11 @@ async def main():
                 if request.name in CommandProcessor.Commands():
                     last_action = datetime.datetime.now()
                     await CommandProcessor.Commands()[request.name](module_client, request)
-                    await send_telemetry()
+                    await send_telemetry_once()
                 else:
                     raise ValueError('Unknown command', request.name)
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
             logger.error(f"{datetime.datetime.now()}: Exception during command listener: {e}")
 
@@ -77,23 +79,28 @@ async def main():
                         logger.info(f'{datetime.datetime.now()}: Device channels powered down for {name}')
             await asyncio.sleep(1)
 
+    async def send_telemetry_once():
+        # Send a single sample, including after a completed command.
+        try:
+            names:List[str] = Cam.get_names()
+            cam:Cam = Cam.get(names[0])
+            telemetry = {
+                'base': cam.position[0],
+                'elevation': cam.position[1]
+            }
+            payload = json.dumps(telemetry)
+            logger.info(f'{datetime.datetime.now()}: Device telemetry: {payload}')
+            await module_client.send_message(payload)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error(f'{datetime.datetime.now()}: Exception during sending metrics: {e}')
+
     async def send_telemetry():
-        # Define behavior for sending telemetry
+        # Only the background task owns the periodic telemetry loop.
         while True:
-            try:
-                names:List[str] = Cam.get_names()
-                cam:Cam = Cam.get(names[0])
-                telemetry = {
-                    'base': cam.position[0],
-                    'elevation': cam.position[1]
-                }
-                payload = json.dumps(telemetry)
-                logger.info(f'{datetime.datetime.now()}: Device telemetry: {payload}')
-                await module_client.send_message(payload)  
-            except Exception as e:
-                logger.error(f'{datetime.datetime.now()}: Exception during sending metrics: {e}')
-            finally:
-                await asyncio.sleep(sampleRateInSeconds)       
+            await send_telemetry_once()
+            await asyncio.sleep(sampleRateInSeconds)
 
     async def twin_update_handler(patch):
         nonlocal sampleRateInSeconds, powerdown, env, last_action
